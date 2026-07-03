@@ -3,10 +3,12 @@ import { useState, useEffect, useRef, type ReactNode } from "react";
 // Block index: 0=B1, 1=B2, 2=B3, 3=Deload
 const BLOCKS = ["Block 1", "Block 2", "Block 3", "Deload"];
 
-// ═══ EDIT THIS to switch training block, then redeploy with `npm run deploy` ═══
+// ═══ EDIT THESE when the programme changes, then redeploy with `npm run deploy` ═══
 // 0 = Block 1, 1 = Block 2, 2 = Block 3, 3 = Deload
-// On next load the app rebuilds the plan for the new block and carries PBs over.
 const CURRENT_BLOCK = 0;
+// Bump by 1 whenever DAYS below is edited (new weights, exercises, etc.) — phones only
+// rebuild the plan when this or CURRENT_BLOCK changes. PBs and history always carry over.
+const PLAN_VERSION = 1;
 
 type SetSpec = { s: number; r: number; w: string };
 type ExerciseDef = { n: string; b: SetSpec[]; rest: number };
@@ -115,12 +117,14 @@ const store = {
   set(k: string, v: unknown) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
 };
 
-// The block lives in code (CURRENT_BLOCK above), so on load we compare it against the
-// block the saved state was built for — if it changed, rebuild the plan and keep the PBs.
+// The programme lives in code (CURRENT_BLOCK / PLAN_VERSION above), so on load we compare
+// them against what the saved state was built from — if either changed, rebuild the plan
+// from DAYS and keep the PBs.
 function loadState(): DayState[] {
   const saved = store.get<DayState[]>("gym-state");
   const savedBlock = store.get<number>("gym-block");
-  if (saved && savedBlock === CURRENT_BLOCK) return saved;
+  const savedVersion = store.get<number>("gym-plan-version");
+  if (saved && savedBlock === CURRENT_BLOCK && savedVersion === PLAN_VERSION) return saved;
   const ns = initState(CURRENT_BLOCK);
   if (saved) {
     const pbs: Record<string, number> = {};
@@ -255,7 +259,7 @@ export default function GymTracker() {
 
   // No-ops inside a claude.ai artifact; persists everything if hosted as a real site
   useEffect(() => { store.set("gym-state", state); }, [state]);
-  useEffect(() => { store.set("gym-block", CURRENT_BLOCK); }, []);
+  useEffect(() => { store.set("gym-block", CURRENT_BLOCK); store.set("gym-plan-version", PLAN_VERSION); }, []);
   useEffect(() => { store.set("gym-history", history); }, [history]);
 
   useEffect(() => {
