@@ -35,9 +35,13 @@ When Dan pastes a new week/programme:
 
 ## Gotchas
 
-- GitHub Pages builds sometimes stick on "building" for 10+ min. Nudge with
-  `gh api -X POST repos/Daniel-hirst/gym-tracker/pages/builds`, then re-poll.
-  Always verify the live page serves the new bundle filename after deploying.
+- GitHub Pages builds sometimes stick on "building" for 10+ min. If truly stuck,
+  nudge ONCE with `gh api -X POST repos/Daniel-hirst/gym-tracker/pages/builds`,
+  then poll patiently (30s+ intervals, several minutes). NEVER nudge in a loop:
+  each POST cancels the in-progress build, which shows up as cancelled/failed
+  "pages build and deployment" workflow runs and emails Dan "some jobs were not
+  successful". Always verify the live page serves the new bundle filename after
+  deploying.
 - Dan's iPhone home-screen app caches aggressively. A network-first service worker
   (public/sw.js, registered in main.tsx, prod only) forces fresh HTML on every
   launch and provides full offline fallback. The app footer shows a
