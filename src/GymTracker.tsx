@@ -455,7 +455,7 @@ export default function GymTracker() {
   const timerBarPct = restLeft !== null && restTotal > 0 ? (restLeft / restTotal) * 100 : 0;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: C.bg, fontFamily: "'SF Pro Display',-apple-system,'Helvetica Neue',sans-serif", color: C.text, maxWidth: 460, margin: "0 auto" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: C.bg, fontFamily: "'SF Pro Display',-apple-system,'Helvetica Neue',sans-serif", color: C.text, maxWidth: 460, margin: "0 auto", paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)", boxSizing: "border-box" }}>
       <style>{CSS}</style>
 
       <div className="scroll-area" style={{ flex: 1, overflowY: "auto" }}>
@@ -708,10 +708,10 @@ export default function GymTracker() {
         </div>
       )}
 
-      {toast && <div style={{ position: "fixed", bottom: timerActive ? 96 : 20, left: "50%", transform: "translateX(-50%)", background: C.surface2, border: `1px solid ${C.border2}`, color: C.text, fontSize: 13, padding: "10px 18px", borderRadius: 100, pointerEvents: "none", fontFamily: "inherit", fontWeight: 600, whiteSpace: "nowrap", zIndex: 999, boxShadow: "0 4px 20px rgba(0,0,0,0.4)" }}>{toast}</div>}
+      {toast && <div style={{ position: "fixed", bottom: `calc(${timerActive ? 96 : 20}px + env(safe-area-inset-bottom))`, left: "50%", transform: "translateX(-50%)", background: C.surface2, border: `1px solid ${C.border2}`, color: C.text, fontSize: 13, padding: "10px 18px", borderRadius: 100, pointerEvents: "none", fontFamily: "inherit", fontWeight: 600, whiteSpace: "nowrap", zIndex: 999, boxShadow: "0 4px 20px rgba(0,0,0,0.4)" }}>{toast}</div>}
 
       {undoDel && (
-        <button onClick={undoDelete} style={{ position: "fixed", bottom: (timerActive ? 96 : 20) + (toast ? 52 : 0), left: "50%", transform: "translateX(-50%)", background: C.surface2, border: `1px solid ${C.timer}66`, color: C.text, fontSize: 13, padding: "12px 18px", borderRadius: 100, cursor: "pointer", fontFamily: "inherit", fontWeight: 600, whiteSpace: "nowrap", zIndex: 1000, boxShadow: "0 4px 20px rgba(0,0,0,0.4)", display: "flex", alignItems: "center", gap: 8, animation: "popIn .2s ease" }}>
+        <button onClick={undoDelete} style={{ position: "fixed", bottom: `calc(${(timerActive ? 96 : 20) + (toast ? 52 : 0)}px + env(safe-area-inset-bottom))`, left: "50%", transform: "translateX(-50%)", background: C.surface2, border: `1px solid ${C.timer}66`, color: C.text, fontSize: 13, padding: "12px 18px", borderRadius: 100, cursor: "pointer", fontFamily: "inherit", fontWeight: 600, whiteSpace: "nowrap", zIndex: 1000, boxShadow: "0 4px 20px rgba(0,0,0,0.4)", display: "flex", alignItems: "center", gap: 8, animation: "popIn .2s ease" }}>
           <span style={{ color: C.muted }}>deleted “{undoDel.ex.n}”</span>
           <span style={{ color: C.timer, fontWeight: 700 }}>UNDO</span>
         </button>
