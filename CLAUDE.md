@@ -35,7 +35,9 @@ When Dan pastes a new week/programme:
 - GitHub Pages builds sometimes stick on "building" for 10+ min. Nudge with
   `gh api -X POST repos/Daniel-hirst/gym-tracker/pages/builds`, then re-poll.
   Always verify the live page serves the new bundle filename after deploying.
-- Dan's iPhone home-screen app caches aggressively. The app footer shows a
+- Dan's iPhone home-screen app caches aggressively. A network-first service worker
+  (public/sw.js, registered in main.tsx, prod only) forces fresh HTML on every
+  launch and provides full offline fallback. The app footer shows a
   `build <timestamp>` stamp (injected via `__BUILD_STAMP__` in vite.config.js) —
   if his phone misbehaves after a deploy, first check whether that stamp is stale.
   Fix order: force-quit and reopen → refresh in Safari → remove/re-add the icon.
