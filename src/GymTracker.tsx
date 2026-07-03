@@ -146,6 +146,19 @@ const C = {
 
 const RPE_COLORS = ["","","","","#34d399","#34d399","#34d399","#fbbf24","#fb923c","#f87171","#f87171"];
 
+// Tested 1RMs baked in from PT sessions (kg). Newer in-app entries (progress
+// screen) override these; keys are exercise names as they appear in DAYS.
+const TESTED_1RMS: Record<string, { w: number; date: string }> = {
+  "Conventional Deadlift": { w: 125, date: "2026-07-03" },
+  "Barbell Back Squat":    { w: 90,   date: "2026-07-03" },
+  "Bench Press":           { w: 77.5, date: "2026-07-03" }, // not in the current plan; kept for future programmes
+  "Barbell OHP":           { w: 55,   date: "2026-07-03" },
+};
+
+type OneRm = { w: number; date: string };
+function rmKey(name: string): string { return name.trim().toLowerCase(); }
+function getOneRm(oneRms: Record<string, OneRm>, name: string): OneRm | null { return oneRms[rmKey(name)] ?? null; }
+
 // ── Progress charts / estimated 1RM ──────────────────────────────────────────
 // Epley e1RM; only computed for plain-kg sets (same comparability rule as PBs)
 function epley(w: number, r: number): number { return r <= 1 ? w : w * (1 + r / 30); }
@@ -196,10 +209,11 @@ function niceTicks(lo: number, hi: number): number[] {
 
 const CHART_ACCENT = "#0284c7"; // validated ≥3:1 vs the dark surface
 
-export function LineChart({ points, unit, sel, onSel }: { points: { date: Date; v: number }[]; unit: string; sel: number; onSel: (i: number) => void }) {
+export function LineChart({ points, unit, sel, onSel, refLine }: { points: { date: Date; v: number }[]; unit: string; sel: number; onSel: (i: number) => void; refLine?: { v: number; label: string } | null }) {
   const W = 360, H = 190, L = 40, R = 14, T = 26, B = 22;
   const vals = points.map(p => p.v);
   let lo = Math.min(...vals), hi = Math.max(...vals);
+  if (refLine) { lo = Math.min(lo, refLine.v); hi = Math.max(hi, refLine.v); }
   const pad = (hi - lo) * 0.15 || hi * 0.08 || 1;
   lo = Math.max(0, lo - pad); hi += pad;
   const x = (i: number) => points.length === 1 ? L + (W - L - R) / 2 : L + (i * (W - L - R)) / (points.length - 1);
@@ -220,6 +234,12 @@ export function LineChart({ points, unit, sel, onSel }: { points: { date: Date; 
           <text x={L - 6} y={y(t) + 3} textAnchor="end" fontSize={9} fill={C.faint} fontFamily="inherit">{fmtNum(t)}</text>
         </g>
       ))}
+      {refLine && (
+        <g>
+          <line x1={L} x2={W - R} y1={y(refLine.v)} y2={y(refLine.v)} stroke={C.pb} strokeOpacity={0.55} strokeWidth={1.5} strokeDasharray="5 4" />
+          <text x={W - R} y={y(refLine.v) - 5} textAnchor="end" fontSize={9} fill={C.muted} fontFamily="inherit">{refLine.label}</text>
+        </g>
+      )}
       <path d={path} fill="none" stroke={CHART_ACCENT} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
       {points.map((p, i) => (
         <circle key={i} cx={x(i)} cy={y(p.v)} r={i === last ? 5 : 4} fill={CHART_ACCENT} stroke={C.surface} strokeWidth={2} />
@@ -286,6 +306,16 @@ export default function GymTracker() {
   const [undoDel, setUndoDel] = useState<{ ex: Exercise; day: number; idx: number } | null>(null);
   const undoRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showProgress, setShowProgress] = useState(false);
+  const [oneRms, setOneRms] = useState<Record<string, OneRm>>(() => {
+    // Merge code-baked tests with in-app entries; the newer date wins per exercise
+    const merged: Record<string, OneRm> = { ...(store.get<Record<string, OneRm>>("gym-1rms") ?? {}) };
+    Object.entries(TESTED_1RMS).forEach(([k, v]) => {
+      const kk = rmKey(k);
+      if (!merged[kk] || new Date(v.date) > new Date(merged[kk].date)) merged[kk] = v;
+    });
+    return merged;
+  });
+  const [rmText, setRmText] = useState("");
   const [chartEx, setChartEx] = useState<string | null>(null);
   const [metric, setMetric] = useState<"e1rm" | "top" | "vol">("e1rm");
   const [chartSel, setChartSel] = useState(-1);
@@ -373,6 +403,7 @@ export default function GymTracker() {
   // No-ops inside a claude.ai artifact; persists everything if hosted as a real site
   useEffect(() => { store.set("gym-state", state); }, [state]);
   useEffect(() => { store.set("gym-block", CURRENT_BLOCK); store.set("gym-plan-version", PLAN_VERSION); }, []);
+  useEffect(() => { store.set("gym-1rms", oneRms); }, [oneRms]);
   useEffect(() => { store.set("gym-history", history); }, [history]);
 
   useEffect(() => {
@@ -518,6 +549,20 @@ export default function GymTracker() {
     } catch { showToast("Couldn't read that backup"); }
   }
 
+  function saveRm() {
+    if (!activeChartEx) return;
+    const k = rmKey(activeChartEx);
+    if (!rmText.trim()) {
+      setOneRms(o => { const n = { ...o }; delete n[k]; return n; });
+      showToast("Tested 1RM cleared");
+      return;
+    }
+    const v = parseFloat(rmText);
+    if (isNaN(v) || v <= 0) { showToast("Enter a weight in kg"); return; }
+    setOneRms(o => ({ ...o, [k]: { w: v, date: new Date().toISOString().slice(0, 10) } }));
+    showToast(`Tested 1RM saved: ${fmtKg(v)}kg 🏆`);
+  }
+
   // Most recent completed entry for this exercise name, plus a progression hint:
   // all sets done last time at RPE ≤ 7 (or unrecorded) → suggest a small bump on the top weight
   function lastTime(name: string) {
@@ -567,6 +612,7 @@ export default function GymTracker() {
     return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib);
   });
   const activeChartEx = chartEx && chartNames.includes(chartEx) ? chartEx : chartNames[0] ?? null;
+  const activeRm = activeChartEx ? getOneRm(oneRms, activeChartEx) : null;
   const series = activeChartEx ? exerciseSeries(history, activeChartEx) : [];
   const chartPts = series.flatMap(p => (p[metric] != null ? [{ date: p.date, v: p[metric] as number }] : []));
   const METRICS: { key: "e1rm" | "top" | "vol"; label: string; unit: string }[] = [
@@ -574,6 +620,12 @@ export default function GymTracker() {
     { key: "top", label: "top weight", unit: "kg" },
     { key: "vol", label: "volume", unit: "kg" },
   ];
+
+  // Prefill the tested-1RM box for the exercise being viewed
+  useEffect(() => {
+    if (showProgress && activeChartEx) { const rm = getOneRm(oneRms, activeChartEx); setRmText(rm ? String(rm.w) : ""); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showProgress, activeChartEx]);
 
   const timerColor = restDone ? C.timerDone : C.timer;
   const radius = 16;
@@ -654,11 +706,17 @@ export default function GymTracker() {
                 <div style={{ height: 2, borderRadius: 2, marginBottom: 12, background: allDone ? `linear-gradient(90deg, ${C.success}, transparent)` : isPb ? `linear-gradient(90deg, ${C.pb}, transparent)` : `linear-gradient(90deg, ${day.color}, transparent)`, opacity: 0.8 }} />
 
                 {isPb && <div style={{ background: `linear-gradient(135deg, ${C.pb}, #f59e0b)`, color: "#000", fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 100, display: "inline-flex", gap: 4, marginBottom: 8 }}>🏆 NEW PERSONAL BEST!</div>}
-                {e.pb && !isPb && (() => { const bE = bestE1rm(history, e.n); return (
-                  <div style={{ color: C.pb, fontSize: 11, fontWeight: 600, marginBottom: 6, display: "flex", alignItems: "center", gap: 4 }}>
-                    🏆 <span>PB: {e.pb}kg</span>{bE ? <span style={{ color: C.muted, fontWeight: 600 }}> · e1RM ~{fmtKg(bE)}kg</span> : null}
-                  </div>
-                ); })()}
+                {!isPb && (() => {
+                  const rm = getOneRm(oneRms, e.n);
+                  if (!e.pb && !rm) return null;
+                  const bE = rm ? null : bestE1rm(history, e.n);
+                  return (
+                    <div style={{ color: C.pb, fontSize: 11, fontWeight: 600, marginBottom: 6, display: "flex", alignItems: "center", gap: 4 }}>
+                      🏆 <span>{e.pb ? `PB: ${e.pb}kg` : ""}</span>
+                      {rm ? <span style={{ color: C.muted, fontWeight: 600 }}>{e.pb ? "· " : ""}1RM {fmtKg(rm.w)}kg</span> : bE ? <span style={{ color: C.muted, fontWeight: 600 }}>· e1RM ~{fmtKg(bE)}kg</span> : null}
+                    </div>
+                  );
+                })()}
                 {!isCollapsed && (() => { const lt = lastTime(e.n); return lt ? <div style={{ fontSize: 11, color: C.muted, marginBottom: 6 }}>↩ last: {lt.label} · {lt.date.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}{lt.next ? <span style={{ color: C.success, fontWeight: 700 }}> · try {lt.next}kg ↗</span> : null}</div> : null; })()}
 
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: isCollapsed ? 0 : 12 }}>
@@ -846,8 +904,20 @@ export default function GymTracker() {
                   {chartPts.length === 0 ? (
                     <div style={{ padding: "28px 12px", textAlign: "center", color: C.faint, fontSize: 13 }}>No comparable kg sets logged for this one yet</div>
                   ) : (
-                    <LineChart points={chartPts} unit="kg" sel={chartSel} onSel={setChartSel} />
+                    <LineChart points={chartPts} unit="kg" sel={chartSel} onSel={setChartSel} refLine={metric !== "vol" && activeRm ? { v: activeRm.w, label: `tested 1RM ${fmtKg(activeRm.w)}` } : null} />
                   )}
+                </div>
+
+                {/* Tested 1RM entry */}
+                <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: "10px 12px", marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, letterSpacing: "0.08em" }}>TESTED 1RM</div>
+                    <div style={{ fontSize: 11, color: C.faint, marginTop: 2 }}>
+                      {activeRm ? `saved ${new Date(activeRm.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : "log a real single here"}
+                    </div>
+                  </div>
+                  <input value={rmText} onChange={ev => setRmText(ev.target.value)} inputMode="decimal" placeholder="kg" style={{ width: 68, background: C.surface3, border: `1px solid ${C.border2}`, borderRadius: 8, padding: "9px 8px", fontSize: 14, fontWeight: 700, color: C.text, fontFamily: "inherit", outline: "none", textAlign: "center" }} />
+                  <button onClick={saveRm} style={{ padding: "10px 14px", borderRadius: 8, border: `1px solid ${C.pb}44`, background: "rgba(251,191,36,0.08)", color: C.pb, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>save</button>
                 </div>
 
                 {/* Stat tiles */}

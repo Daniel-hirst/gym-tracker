@@ -20,6 +20,9 @@ When Dan pastes a new week/programme:
    ticks, notes and any in-app weight edits, so it should happen at week boundaries.
 3. If he's moving to a new block, also change `CURRENT_BLOCK` (0=Block 1, 1=Block 2,
    2=Block 3, 3=Deload).
+3b. If he reports tested 1RMs, add/update them in the `TESTED_1RMS` map (same file,
+   keyed by exercise name, with the test date). Newer dates win over in-app entries.
+   No PLAN_VERSION bump needed for 1RM-only changes.
 4. Deploy with `npm run deploy` (runs the type check, builds, force-pushes `dist/` to
    the `gh-pages` branch). Commit and push the source change to `main` too.
 5. Verify the live page serves the new bundle filename before telling him it's done.
