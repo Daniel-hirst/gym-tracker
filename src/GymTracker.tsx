@@ -155,6 +155,11 @@ const CSS = `
   .scroll-area::-webkit-scrollbar{display:none}
   .scroll-area{-ms-overflow-style:none;scrollbar-width:none}
   button:active{opacity:0.7;transform:scale(0.95)}
+  /* Home-screen (standalone) mode draws under the iPhone status bar; some iOS versions
+     report a zero safe-area inset there, so fall back to a typical notch height. */
+  @media (display-mode: standalone) {
+    .app-root { padding-top: max(env(safe-area-inset-top), 54px) !important; }
+  }
 `;
 
 export default function GymTracker() {
@@ -455,7 +460,7 @@ export default function GymTracker() {
   const timerBarPct = restLeft !== null && restTotal > 0 ? (restLeft / restTotal) * 100 : 0;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: C.bg, fontFamily: "'SF Pro Display',-apple-system,'Helvetica Neue',sans-serif", color: C.text, maxWidth: 460, margin: "0 auto", paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)", boxSizing: "border-box" }}>
+    <div className="app-root" style={{ display: "flex", flexDirection: "column", height: "100vh", background: C.bg, fontFamily: "'SF Pro Display',-apple-system,'Helvetica Neue',sans-serif", color: C.text, maxWidth: 460, margin: "0 auto", paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)", boxSizing: "border-box" }}>
       <style>{CSS}</style>
 
       <div className="scroll-area" style={{ flex: 1, overflowY: "auto" }}>
@@ -679,6 +684,8 @@ export default function GymTracker() {
           <button onClick={finishSession} style={{ width: "100%", padding: 13, borderRadius: 12, fontFamily: "inherit", fontSize: 13, fontWeight: 600, cursor: "pointer", border: `1px solid ${C.success}44`, background: "rgba(52,211,153,0.08)", color: C.success, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
             ✓ finish session — save to history{history.length > 0 ? ` (${history.length} saved)` : ""}
           </button>
+
+          <div style={{ textAlign: "center", fontSize: 10, color: C.faint }}>build {__BUILD_STAMP__}</div>
         </div>
       </div>
 
