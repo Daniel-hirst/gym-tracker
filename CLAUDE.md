@@ -24,8 +24,11 @@ When Dan pastes a new week/programme:
    keyed by exercise name, with the test date). Newer dates win over in-app entries.
    No PLAN_VERSION bump needed for 1RM-only changes.
 4. Deploy with `npm run deploy` (runs the type check, builds, force-pushes `dist/` to
-   the `gh-pages` branch). Commit and push the source change to `main` too.
-5. Verify the live page serves the new bundle filename before telling him it's done.
+   the `gh-pages` branch). Commit and push the source change to `main` too. Do the
+   whole chain in ONE command — Dan values speed.
+5. Verify the live page in the BACKGROUND (Monitor watching for the new bundle
+   filename) and tell him it's deployed straight away — only follow up if the
+   deploy actually fails. Never block the reply on Pages, which can take 10+ min.
 
 ## Commands
 
