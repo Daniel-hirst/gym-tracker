@@ -156,6 +156,17 @@ const TESTED_1RMS: Record<string, { w: number; date: string }> = {
 };
 
 type OneRm = { w: number; date: string };
+
+// Warm-up ramp for barbell lifts: empty bar, then rounded % steps up to the work weight
+const BARBELL_RE = /barbell|deadlift|squat|bench press|ohp/i;
+function warmupRamp(target: number, bar = 20): { w: number; r: number }[] {
+  const out: { w: number; r: number }[] = [{ w: bar, r: 10 }];
+  ([[0.55, 5], [0.7, 3], [0.85, 2]] as const).forEach(([p, r]) => {
+    const w = Math.round((target * p) / 2.5) * 2.5;
+    if (w > bar + 2.4 && w < target && !out.some(s => s.w === w)) out.push({ w, r });
+  });
+  return out;
+}
 function rmKey(name: string): string { return name.trim().toLowerCase(); }
 function getOneRm(oneRms: Record<string, OneRm>, name: string): OneRm | null { return oneRms[rmKey(name)] ?? null; }
 
@@ -710,10 +721,12 @@ export default function GymTracker() {
                   const rm = getOneRm(oneRms, e.n);
                   if (!e.pb && !rm) return null;
                   const bE = rm ? null : bestE1rm(history, e.n);
+                  const kgWs = e.sets.filter(s => isKgWeight(s.w)).map(s => parseWeight(s.w) || 0);
+                  const pct = rm && kgWs.length ? Math.round((Math.max(...kgWs) / rm.w) * 100) : null;
                   return (
                     <div style={{ color: C.pb, fontSize: 11, fontWeight: 600, marginBottom: 6, display: "flex", alignItems: "center", gap: 4 }}>
                       🏆 <span>{e.pb ? `PB: ${e.pb}kg` : ""}</span>
-                      {rm ? <span style={{ color: C.muted, fontWeight: 600 }}>{e.pb ? "· " : ""}1RM {fmtKg(rm.w)}kg</span> : bE ? <span style={{ color: C.muted, fontWeight: 600 }}>· e1RM ~{fmtKg(bE)}kg</span> : null}
+                      {rm ? <span style={{ color: C.muted, fontWeight: 600 }}>{e.pb ? "· " : ""}1RM {fmtKg(rm.w)}kg{pct && pct > 10 && pct <= 110 ? ` · today ${pct}%` : ""}</span> : bE ? <span style={{ color: C.muted, fontWeight: 600 }}>· e1RM ~{fmtKg(bE)}kg</span> : null}
                     </div>
                   );
                 })()}
@@ -754,6 +767,16 @@ export default function GymTracker() {
                       <button onClick={() => adjExRest(j, 15)} style={{ width: 30, height: 30, borderRadius: 7, border: "none", background: C.surface3, color: C.text, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
                     </div>
                   </div>
+
+                  {(() => {
+                    const w0 = e.sets.length && isKgWeight(e.sets[0].w) ? parseWeight(e.sets[0].w) : null;
+                    if (!w0 || w0 < 30 || !BARBELL_RE.test(e.n) || e.sets.some(s => s.done)) return null;
+                    return (
+                      <div style={{ fontSize: 11, color: C.faint, marginBottom: 8 }}>
+                        🔥 warm-up: {warmupRamp(w0).map(s => `${s.w === 20 ? "bar" : s.w}×${s.r}`).join(" · ")}
+                      </div>
+                    );
+                  })()}
 
                   <div style={{ display: "grid", gridTemplateColumns: "20px 1fr 1fr 46px", gap: 5, marginBottom: 5, padding: "0 2px" }}>
                     <div /><div style={{ fontSize: 11, color: C.muted, fontWeight: 700, letterSpacing: "0.1em", textAlign: "center" }}>REPS</div>
