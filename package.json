@@ -5,16 +5,19 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "deploy": "vite build && cd dist && git init -b gh-pages && git add -A && git commit -m deploy && git push -f https://github.com/Daniel-hirst/gym-tracker.git gh-pages && cd .. && rm -rf dist/.git"
+    "deploy": "npm run build && cd dist && git init -b gh-pages && git add -A && git commit -m deploy && git push -f https://github.com/Daniel-hirst/gym-tracker.git gh-pages && cd .. && rm -rf dist/.git"
   },
   "dependencies": {
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^6.0.3",
     "vite": "^6.0.0"
   }
 }

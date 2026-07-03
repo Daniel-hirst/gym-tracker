@@ -1,9 +1,31 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 
 // Block index: 0=B1, 1=B2, 2=B3, 3=Deload
 const BLOCKS = ["Block 1", "Block 2", "Block 3", "Deload"];
 
-const DAYS = [
+// ═══ EDIT THIS to switch training block, then redeploy with `npm run deploy` ═══
+// 0 = Block 1, 1 = Block 2, 2 = Block 3, 3 = Deload
+// On next load the app rebuilds the plan for the new block and carries PBs over.
+const CURRENT_BLOCK = 0;
+
+type SetSpec = { s: number; r: number; w: string };
+type ExerciseDef = { n: string; b: SetSpec[]; rest: number };
+type DayDef = {
+  name: string; sub: string; emoji: string;
+  color: string; glow: string; grad: string; bg: string;
+  ex: ExerciseDef[];
+};
+type WorkSet = { id: string; r: number; w: string; done: boolean; startW: string };
+type Exercise = {
+  id: string; n: string; sets: WorkSet[]; note: string;
+  pb: number | null; rpe: number | null; rest: number; collapsed: boolean;
+};
+type DayState = { startedAt: number | null; ex: Exercise[] };
+type HistorySet = { r: number; w: string; done: boolean };
+type HistoryExercise = { n: string; rpe: number | null; note: string; pb: number | null; sets: HistorySet[] };
+type HistoryEntry = { date: string; day: string; block: number; mins: number | null; volume: number | null; ex: HistoryExercise[] };
+
+const DAYS: DayDef[] = [
   {
     name: "Push", sub: "SHOULDERS · CHEST · TRICEPS", emoji: "💪",
     color: "#ff6b6b", glow: "rgba(255,107,107,0.25)", grad: "linear-gradient(135deg, #ff6b6b, #ff8e53)", bg: "rgba(255,107,107,0.08)",
@@ -68,10 +90,10 @@ const DAYS = [
   },
 ];
 
-function uid() { return (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`; }
-function makeSets(count, r, w) { return Array(count).fill(null).map(() => ({ id: uid(), r, w, done: false, startW: w })); }
+function uid(): string { return (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`; }
+function makeSets(count: number, r: number, w: string): WorkSet[] { return Array(count).fill(null).map(() => ({ id: uid(), r, w, done: false, startW: w })); }
 
-function initState(blockIdx) {
+function initState(blockIdx: number): DayState[] {
   return DAYS.map(d => ({
     startedAt: null,
     ex: d.ex.map(e => {
@@ -81,17 +103,32 @@ function initState(blockIdx) {
   }));
 }
 
-function fmt(s) { return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; }
-function parseWeight(w) { const m = String(w || "").match(/[\d.]+/); return m ? parseFloat(m[0]) : null; }
+function fmt(s: number): string { return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; }
+function parseWeight(w: string): number | null { const m = String(w || "").match(/[\d.]+/); return m ? parseFloat(m[0]) : null; }
 // Only treat plain kg values as PB-able — "Stack 7", "Band", "40kg/side" etc. are not comparable weights
-function isKgWeight(w) { return /^\s*\d+(\.\d+)?\s*(kg)?\s*$/i.test(String(w || "")); }
+function isKgWeight(w: string): boolean { return /^\s*\d+(\.\d+)?\s*(kg)?\s*$/i.test(String(w || "")); }
 
 // localStorage is blocked inside claude.ai artifacts (sandboxed iframe) — this no-ops there,
 // but persists automatically if the app is ever hosted for real.
 const store = {
-  get(k) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch { return null; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  get<T>(k: string): T | null { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) as T : null; } catch { return null; } },
+  set(k: string, v: unknown) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
 };
+
+// The block lives in code (CURRENT_BLOCK above), so on load we compare it against the
+// block the saved state was built for — if it changed, rebuild the plan and keep the PBs.
+function loadState(): DayState[] {
+  const saved = store.get<DayState[]>("gym-state");
+  const savedBlock = store.get<number>("gym-block");
+  if (saved && savedBlock === CURRENT_BLOCK) return saved;
+  const ns = initState(CURRENT_BLOCK);
+  if (saved) {
+    const pbs: Record<string, number> = {};
+    saved.forEach(d => d.ex.forEach(e => { if (e.pb) pbs[e.n] = Math.max(pbs[e.n] || 0, e.pb); }));
+    ns.forEach(d => d.ex.forEach(e => { if (pbs[e.n]) e.pb = pbs[e.n]; }));
+  }
+  return ns;
+}
 
 const C = {
   bg: "#0c0e13", surface: "#13161e", surface2: "#1a1e28", surface3: "#222736",
@@ -104,7 +141,7 @@ const C = {
 
 const RPE_COLORS = ["","","","","#34d399","#34d399","#34d399","#fbbf24","#fb923c","#f87171","#f87171"];
 
-const Adj = ({ onClick, children }) => (
+const Adj = ({ onClick, children }: { onClick: () => void; children: ReactNode }) => (
   <button onClick={onClick} style={{ width: 38, height: 38, borderRadius: 10, border: `1px solid ${C.border2}`, background: C.surface3, color: C.text, fontSize: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontFamily: "inherit" }}>{children}</button>
 );
 
@@ -117,10 +154,9 @@ const CSS = `
 `;
 
 export default function GymTracker() {
-  const [block, setBlock] = useState(() => store.get("gym-block") ?? 0);
   const [cur, setCur] = useState(0);
-  const [state, setState] = useState(() => store.get("gym-state") ?? initState(store.get("gym-block") ?? 0));
-  const [history, setHistory] = useState(() => store.get("gym-history") ?? []);
+  const [state, setState] = useState<DayState[]>(loadState);
+  const [history, setHistory] = useState<HistoryEntry[]>(() => store.get<HistoryEntry[]>("gym-history") ?? []);
   const [showRestore, setShowRestore] = useState(false);
   const [restoreText, setRestoreText] = useState("");
   const [copied, setCopied] = useState(false);
@@ -128,17 +164,17 @@ export default function GymTracker() {
   const [showPlateCalc, setShowPlateCalc] = useState(false);
   const [plateTarget, setPlateTarget] = useState("");
   const [barWeight, setBarWeight] = useState(20);
-  const [pbFlash, setPbFlash] = useState(null);
-  const [restLeft, setRestLeft] = useState(null);
+  const [pbFlash, setPbFlash] = useState<number | null>(null);
+  const [restLeft, setRestLeft] = useState<number | null>(null);
   const [restTotal, setRestTotal] = useState(90);
   const [activeExRest, setActiveExRest] = useState(90);
   const [isFlashing, setIsFlashing] = useState(false);
-  const timerRef = useRef(null);
-  const flashRef = useRef(null);
-  const endRef = useRef(null);
-  const audioRef = useRef(null);
-  const pbTimeoutRef = useRef(null);
-  const toastRef = useRef(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const flashRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const endRef = useRef<number | null>(null);
+  const audioRef = useRef<AudioContext | null>(null);
+  const pbTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toastRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const day = DAYS[cur];
   const exs = state[cur].ex;
@@ -157,7 +193,7 @@ export default function GymTracker() {
   // AudioContext must be created during a user gesture (ticking a set) to be allowed to play later
   function unlockAudio() {
     try {
-      if (!audioRef.current) audioRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      if (!audioRef.current) audioRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
       if (audioRef.current.state === "suspended") audioRef.current.resume();
     } catch {}
   }
@@ -196,7 +232,7 @@ export default function GymTracker() {
     }
   }
 
-  function startTimer(sec) {
+  function startTimer(sec: number) {
     if (timerRef.current) clearInterval(timerRef.current);
     if (flashRef.current) clearTimeout(flashRef.current);
     setIsFlashing(false); endRef.current = Date.now() + sec * 1000; setRestTotal(sec); setRestLeft(sec);
@@ -219,7 +255,7 @@ export default function GymTracker() {
 
   // No-ops inside a claude.ai artifact; persists everything if hosted as a real site
   useEffect(() => { store.set("gym-state", state); }, [state]);
-  useEffect(() => { store.set("gym-block", block); }, [block]);
+  useEffect(() => { store.set("gym-block", CURRENT_BLOCK); }, []);
   useEffect(() => { store.set("gym-history", history); }, [history]);
 
   useEffect(() => {
@@ -228,18 +264,7 @@ export default function GymTracker() {
     return () => document.removeEventListener("visibilitychange", onVis);
   }, []);
 
-  function switchBlock(newBlock) {
-    if (!window.confirm(`Switch to ${BLOCKS[newBlock]}? This will reset all ticked sets.`)) return;
-    const pbs = {};
-    state.forEach(d => d.ex.forEach(e => { if (e.pb) pbs[e.n] = Math.max(pbs[e.n] || 0, e.pb); }));
-    const ns = initState(newBlock);
-    ns.forEach(d => d.ex.forEach(e => { if (pbs[e.n]) e.pb = pbs[e.n]; }));
-    setBlock(newBlock);
-    setState(ns);
-    stopTimer();
-  }
-
-  function update(fn) {
+  function update(fn: (s: DayState[]) => void) {
     setState(s => {
       const ns = s.slice();
       ns[cur] = { ...s[cur], ex: s[cur].ex.map(e => ({ ...e, sets: e.sets.map(set => ({ ...set })) })) };
@@ -248,7 +273,7 @@ export default function GymTracker() {
     });
   }
 
-  function togSet(ei, si) {
+  function togSet(ei: number, si: number) {
     const e = state[cur].ex[ei];
     const set = e.sets[si];
     const nowDone = !set.done;
@@ -279,29 +304,29 @@ export default function GymTracker() {
     }
   }
 
-  function adjSetR(ei, si, d) { update(s => { s[cur].ex[ei].sets[si].r = Math.max(1, s[cur].ex[ei].sets[si].r + d); }); }
-  function setSetReps(ei, si, v) { update(s => { const n = parseInt(v, 10); s[cur].ex[ei].sets[si].r = isNaN(n) ? 0 : Math.min(99, Math.max(0, n)); }); }
-  function blurSetReps(ei, si) { update(s => { if (!s[cur].ex[ei].sets[si].r) s[cur].ex[ei].sets[si].r = 1; }); }
+  function adjSetR(ei: number, si: number, d: number) { update(s => { s[cur].ex[ei].sets[si].r = Math.max(1, s[cur].ex[ei].sets[si].r + d); }); }
+  function setSetReps(ei: number, si: number, v: string) { update(s => { const n = parseInt(v, 10); s[cur].ex[ei].sets[si].r = isNaN(n) ? 0 : Math.min(99, Math.max(0, n)); }); }
+  function blurSetReps(ei: number, si: number) { update(s => { if (!s[cur].ex[ei].sets[si].r) s[cur].ex[ei].sets[si].r = 1; }); }
 
   // PBs now register when a set is ticked done (in togSet), not while typing
-  function upSetW(ei, si, v) { update(s => { s[cur].ex[ei].sets[si].w = v; }); }
+  function upSetW(ei: number, si: number, v: string) { update(s => { s[cur].ex[ei].sets[si].w = v; }); }
 
-  function adjExRest(ei, d) { update(s => { s[cur].ex[ei].rest = Math.max(15, Math.min(300, (s[cur].ex[ei].rest || 90) + d)); }); }
-  function upRpe(ei, v) { update(s => { s[cur].ex[ei].rpe = s[cur].ex[ei].rpe === v ? null : v; }); }
-  function toggleCollapse(ei) { update(s => { s[cur].ex[ei].collapsed = !s[cur].ex[ei].collapsed; }); }
-  function addSet(ei) { update(s => { const sets = s[cur].ex[ei].sets; const last = sets[sets.length-1]; sets.push({ id: uid(), r: last?.r||10, w: last?.w||"", done: false, startW: last?.w||"" }); }); }
-  function removeSet(ei) { update(s => { const sets = s[cur].ex[ei].sets; if (sets.length > 1 && !sets[sets.length - 1].done) sets.pop(); }); }
-  function upN(i, v) { update(s => { s[cur].ex[i].n = v; }); }
-  function blurN(i) { update(s => { if (!s[cur].ex[i].n.trim()) s[cur].ex[i].n = "Exercise"; }); }
-  function upNote(i, v) { update(s => { s[cur].ex[i].note = v; }); }
-  function delE(i) { update(s => { s[cur].ex.splice(i, 1); }); }
+  function adjExRest(ei: number, d: number) { update(s => { s[cur].ex[ei].rest = Math.max(15, Math.min(300, (s[cur].ex[ei].rest || 90) + d)); }); }
+  function upRpe(ei: number, v: number) { update(s => { s[cur].ex[ei].rpe = s[cur].ex[ei].rpe === v ? null : v; }); }
+  function toggleCollapse(ei: number) { update(s => { s[cur].ex[ei].collapsed = !s[cur].ex[ei].collapsed; }); }
+  function addSet(ei: number) { update(s => { const sets = s[cur].ex[ei].sets; const last = sets[sets.length-1]; sets.push({ id: uid(), r: last?.r||10, w: last?.w||"", done: false, startW: last?.w||"" }); }); }
+  function removeSet(ei: number) { update(s => { const sets = s[cur].ex[ei].sets; if (sets.length > 1 && !sets[sets.length - 1].done) sets.pop(); }); }
+  function upN(i: number, v: string) { update(s => { s[cur].ex[i].n = v; }); }
+  function blurN(i: number) { update(s => { if (!s[cur].ex[i].n.trim()) s[cur].ex[i].n = "Exercise"; }); }
+  function upNote(i: number, v: string) { update(s => { s[cur].ex[i].note = v; }); }
+  function delE(i: number) { update(s => { s[cur].ex.splice(i, 1); }); }
   function addEx() { update(s => { s[cur].ex.push({ id: uid(), n: "New exercise", sets: makeSets(3,10,""), note: "", pb: null, rpe: null, rest: 90, collapsed: false }); }); }
   function resetDay() {
     if (!window.confirm("Reset this day?")) return;
     update(s => { s[cur].startedAt = null; s[cur].ex.forEach(e => { e.sets.forEach(set => { set.done = false; }); e.note = ""; e.collapsed = false; }); });
     stopTimer();
   }
-  function showToast(msg) {
+  function showToast(msg: string) {
     setToast(msg);
     if (toastRef.current) clearTimeout(toastRef.current);
     toastRef.current = setTimeout(() => setToast(""), 2500);
@@ -310,8 +335,8 @@ export default function GymTracker() {
   function finishSession() {
     if (!exs.some(e => e.sets.some(s => s.done))) { showToast("Nothing ticked yet"); return; }
     if (!window.confirm("Finish session? Saves it to history and clears the ticks.")) return;
-    const rec = {
-      date: new Date().toISOString(), day: day.name, block,
+    const rec: HistoryEntry = {
+      date: new Date().toISOString(), day: day.name, block: CURRENT_BLOCK,
       mins: sessionMins, volume: sessionVol || null,
       ex: exs.map(e => ({ n: e.n, rpe: e.rpe, note: e.note, pb: e.pb, sets: e.sets.map(s => ({ r: s.r, w: s.w, done: s.done })) })),
     };
@@ -323,7 +348,7 @@ export default function GymTracker() {
 
   // In an artifact, refreshing loses everything — backup/restore via clipboard is the lifeline
   function backup() {
-    const data = JSON.stringify({ v: 1, block, state, history });
+    const data = JSON.stringify({ v: 1, block: CURRENT_BLOCK, state, history });
     navigator.clipboard.writeText(data)
       .then(() => showToast("Backup copied — paste it somewhere safe"))
       .catch(() => showToast("Copy failed"));
@@ -333,7 +358,7 @@ export default function GymTracker() {
     try {
       const d = JSON.parse(restoreText);
       if (!d || !Array.isArray(d.state)) throw new Error("bad backup");
-      setBlock(d.block ?? 0); setState(d.state); setHistory(d.history ?? []);
+      setState(d.state); setHistory(d.history ?? []);
       setShowRestore(false); setRestoreText("");
       showToast("Backup restored 💾");
     } catch { showToast("Couldn't read that backup"); }
@@ -341,14 +366,14 @@ export default function GymTracker() {
 
   // Most recent completed entry for this exercise name, plus a progression hint:
   // all sets done last time at RPE ≤ 7 (or unrecorded) → suggest a small bump on the top weight
-  function lastTime(name) {
+  function lastTime(name: string) {
     for (let i = history.length - 1; i >= 0; i--) {
       const m = history[i].ex.find(x => x.n === name && x.sets.some(s => s.done));
       if (!m) continue;
       const done = m.sets.filter(s => s.done);
-      let top = null;
-      done.forEach(s => { const w = parseWeight(s.w); if (w != null && (!top || w > top.w)) top = { w, raw: s.w, r: s.r }; });
-      let next = null;
+      let top: { w: number; raw: string; r: number } | null = null;
+      for (const s of done) { const w = parseWeight(s.w); if (w != null && (!top || w > top.w)) top = { w, raw: s.w, r: s.r }; }
+      let next: number | null = null;
       if (top && isKgWeight(top.raw) && m.sets.every(s => s.done) && (m.rpe == null || m.rpe <= 7)) {
         next = top.w + (top.w >= 20 ? 2.5 : 1.25);
       }
@@ -359,13 +384,13 @@ export default function GymTracker() {
 
   function copySession() {
     const today = new Date().toLocaleDateString("en-GB", { weekday:"long", day:"numeric", month:"long" });
-    const lines = [`${day.emoji} ${day.name} — ${BLOCKS[block]} (${today})`];
-    const stats = [];
+    const lines = [`${day.emoji} ${day.name} — ${BLOCKS[CURRENT_BLOCK]} (${today})`];
+    const stats: string[] = [];
     if (sessionMins) stats.push(`Duration: ${sessionMins} min`);
     if (sessionVol > 0) stats.push(`Volume: ${sessionVol.toLocaleString()}kg (completed kg sets)`);
     if (stats.length) lines.push(stats.join(" · "));
     lines.push("");
-    const wasNote = set => set.startW && set.w && set.w !== set.startW ? ` (was ${set.startW})` : "";
+    const wasNote = (set: WorkSet) => set.startW && set.w && set.w !== set.startW ? ` (was ${set.startW})` : "";
     const doneExs = exs.filter(e => e.sets.every(s => s.done));
     const partialExs = exs.filter(e => !e.sets.every(s => s.done) && e.sets.some(s => s.done));
     const skipExs = exs.filter(e => e.sets.every(s => !s.done));
@@ -395,7 +420,7 @@ export default function GymTracker() {
           <div style={{ position: "absolute", top: -40, left: -20, width: 200, height: 200, borderRadius: "50%", background: day.glow, filter: "blur(60px)", pointerEvents: "none", opacity: 0.5 }} />
           <div style={{ position: "relative", display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 10 }}>
             <div>
-              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.12em", color: C.muted, marginBottom: 6, textTransform: "uppercase" }}>Dan's Programme</div>
+              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.12em", color: C.muted, marginBottom: 6, textTransform: "uppercase" }}>Dan's Programme · {BLOCKS[CURRENT_BLOCK]}</div>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ width: 42, height: 42, borderRadius: 12, background: day.grad, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, boxShadow: `0 4px 16px ${day.glow}` }}>{day.emoji}</div>
                 <div>
@@ -435,19 +460,6 @@ export default function GymTracker() {
               </div>
             );
           })}
-        </div>
-
-        {/* Block switcher */}
-        <div style={{ display: "flex", gap: 5, padding: "0 16px 16px" }}>
-          {BLOCKS.map((b, i) => (
-            <button key={b} onClick={() => i !== block && switchBlock(i)} style={{
-              flex: 1, padding: "9px 0", borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
-              border: `1px solid ${i === block ? day.color + "60" : C.border}`,
-              background: i === block ? day.bg : C.surface,
-              color: i === block ? day.color : C.muted,
-              transition: "all .2s",
-            }}>{b}</button>
-          ))}
         </div>
 
         {/* Exercise cards */}
@@ -569,7 +581,7 @@ export default function GymTracker() {
           {showPlateCalc && (() => {
             const PLATES = [25, 20, 15, 10, 5, 2.5, 1.25];
             const target = parseFloat(plateTarget);
-            let plates = [];
+            const plates: { kg: number; count: number }[] = [];
             if (!isNaN(target) && target > barWeight) {
               let rem = (target - barWeight) / 2;
               for (const p of PLATES) { const c = Math.floor(rem / p); if (c > 0) { plates.push({ kg: p, count: c }); rem = Math.round((rem - c * p) * 1000) / 1000; } }
@@ -633,7 +645,7 @@ export default function GymTracker() {
                 <circle cx={24} cy={24} r={radius} fill="none" stroke={timerColor} strokeWidth={3} strokeDasharray={`${dash} ${circ}`} strokeLinecap="round" />
               </svg>
               <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <span style={{ fontSize: restDone ? 11 : 14, fontWeight: 700, color: timerColor }}>{restDone ? "GO!" : fmt(restLeft)}</span>
+                <span style={{ fontSize: restDone ? 11 : 14, fontWeight: 700, color: timerColor }}>{restDone ? "GO!" : fmt(restLeft ?? 0)}</span>
               </div>
             </div>
             <div style={{ flex: 1 }}>
