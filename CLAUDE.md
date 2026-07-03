@@ -30,6 +30,16 @@ When Dan pastes a new week/programme:
 
 ## Gotchas
 
+- GitHub Pages builds sometimes stick on "building" for 10+ min. Nudge with
+  `gh api -X POST repos/Daniel-hirst/gym-tracker/pages/builds`, then re-poll.
+  Always verify the live page serves the new bundle filename after deploying.
+- Dan's iPhone home-screen app caches aggressively. The app footer shows a
+  `build <timestamp>` stamp (injected via `__BUILD_STAMP__` in vite.config.js) —
+  if his phone misbehaves after a deploy, first check whether that stamp is stale.
+  Fix order: force-quit and reopen → refresh in Safari → remove/re-add the icon.
+- Only the icon and name are baked in when he adds it to the home screen; code
+  updates flow automatically on next open with a connection.
+
 - Vite `base` is `/gym-tracker/` — all local/deployed URLs need that path suffix.
 - All user data (state, history, PBs) lives in `localStorage` on the phone; there is
   no backend. Never suggest changes that would wipe it without a backup path.
