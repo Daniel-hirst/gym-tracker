@@ -13,6 +13,7 @@ A mobile-first workout tracker built with React + Vite. Follows a 5-day training
 - **PB detection** — flags a personal best when you tick off a heavier top set
 - **RPE + notes** — rate each exercise's difficulty and jot down notes
 - **Session history** — finish a session to save duration, volume and every set to history
+- **Safe deletes** — deleting an exercise shows a tap-to-undo toast, and a "restore from plan" button re-adds any plan exercise that's gone missing
 - **Export / import** — back up all data as JSON and restore it on another device
 - **PWA-ready** — add it to your phone's home screen and it runs like a native app
 

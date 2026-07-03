@@ -179,9 +179,12 @@ export default function GymTracker() {
   const audioRef = useRef<AudioContext | null>(null);
   const pbTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toastRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [undoDel, setUndoDel] = useState<{ ex: Exercise; day: number; idx: number } | null>(null);
+  const undoRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const day = DAYS[cur];
   const exs = state[cur].ex;
+  const missingFromPlan = day.ex.filter(p => !exs.some(e => e.n.trim().toLowerCase() === p.n.trim().toLowerCase())).length;
   const doneTotal = exs.filter(e => e.sets.every(s => s.done)).length;
   const pct = exs.length ? Math.round((doneTotal / exs.length) * 100) : 0;
   const startedAt = state[cur].startedAt;
@@ -255,6 +258,7 @@ export default function GymTracker() {
     if (flashRef.current) clearTimeout(flashRef.current);
     if (pbTimeoutRef.current) clearTimeout(pbTimeoutRef.current);
     if (toastRef.current) clearTimeout(toastRef.current);
+    if (undoRef.current) clearTimeout(undoRef.current);
   }, []);
 
   // No-ops inside a claude.ai artifact; persists everything if hosted as a real site
@@ -323,7 +327,44 @@ export default function GymTracker() {
   function upN(i: number, v: string) { update(s => { s[cur].ex[i].n = v; }); }
   function blurN(i: number) { update(s => { if (!s[cur].ex[i].n.trim()) s[cur].ex[i].n = "Exercise"; }); }
   function upNote(i: number, v: string) { update(s => { s[cur].ex[i].note = v; }); }
-  function delE(i: number) { update(s => { s[cur].ex.splice(i, 1); }); }
+  // Deletes are soft for a few seconds — the toast offers tap-to-undo
+  function delE(i: number) {
+    const removed = state[cur].ex[i];
+    setUndoDel({ ex: removed, day: cur, idx: i });
+    if (undoRef.current) clearTimeout(undoRef.current);
+    undoRef.current = setTimeout(() => setUndoDel(null), 6000);
+    update(s => { s[cur].ex.splice(i, 1); });
+  }
+
+  function undoDelete() {
+    if (!undoDel) return;
+    setState(s => {
+      const ns = s.slice();
+      const ex = ns[undoDel.day].ex.slice();
+      ex.splice(Math.min(undoDel.idx, ex.length), 0, undoDel.ex);
+      ns[undoDel.day] = { ...ns[undoDel.day], ex };
+      return ns;
+    });
+    setUndoDel(null);
+    if (undoRef.current) clearTimeout(undoRef.current);
+    showToast("Exercise restored 👍");
+  }
+
+  // Re-add any plan exercises missing from this day (deleted ones), fresh from DAYS
+  function restorePlan() {
+    const planned = DAYS[cur].ex;
+    const have = new Set(state[cur].ex.map(e => e.n.trim().toLowerCase()));
+    const missing = planned.filter(p => !have.has(p.n.trim().toLowerCase()));
+    if (!missing.length) return;
+    update(s => {
+      missing.forEach(p => {
+        const b = p.b[CURRENT_BLOCK];
+        const idx = Math.min(planned.indexOf(p), s[cur].ex.length);
+        s[cur].ex.splice(idx, 0, { id: uid(), n: p.n, sets: makeSets(b.s, b.r, b.w), note: "", pb: null, rpe: null, rest: p.rest || 90, collapsed: false });
+      });
+    });
+    showToast(`Restored ${missing.length} exercise${missing.length > 1 ? "s" : ""} from the plan`);
+  }
   function addEx() { update(s => { s[cur].ex.push({ id: uid(), n: "New exercise", sets: makeSets(3,10,""), note: "", pb: null, rpe: null, rest: 90, collapsed: false }); }); }
   function resetDay() {
     if (!window.confirm("Reset this day?")) return;
@@ -560,6 +601,11 @@ export default function GymTracker() {
             );
           })}
           <button onClick={addEx} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", padding: 13, border: `1px dashed ${C.border2}`, borderRadius: 13, background: "transparent", color: C.muted, fontSize: 12, fontFamily: "inherit", cursor: "pointer", fontWeight: 600, marginTop: 4 }}>+ add exercise</button>
+          {missingFromPlan > 0 && (
+            <button onClick={restorePlan} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", padding: 13, border: `1px dashed ${C.timer}55`, borderRadius: 13, background: "rgba(56,189,248,0.06)", color: C.timer, fontSize: 12, fontFamily: "inherit", cursor: "pointer", fontWeight: 600, marginTop: 6 }}>
+              ↩ restore {missingFromPlan} missing exercise{missingFromPlan > 1 ? "s" : ""} from the plan
+            </button>
+          )}
         </div>
 
         {/* Footer */}
@@ -663,6 +709,13 @@ export default function GymTracker() {
       )}
 
       {toast && <div style={{ position: "fixed", bottom: timerActive ? 96 : 20, left: "50%", transform: "translateX(-50%)", background: C.surface2, border: `1px solid ${C.border2}`, color: C.text, fontSize: 13, padding: "10px 18px", borderRadius: 100, pointerEvents: "none", fontFamily: "inherit", fontWeight: 600, whiteSpace: "nowrap", zIndex: 999, boxShadow: "0 4px 20px rgba(0,0,0,0.4)" }}>{toast}</div>}
+
+      {undoDel && (
+        <button onClick={undoDelete} style={{ position: "fixed", bottom: (timerActive ? 96 : 20) + (toast ? 52 : 0), left: "50%", transform: "translateX(-50%)", background: C.surface2, border: `1px solid ${C.timer}66`, color: C.text, fontSize: 13, padding: "12px 18px", borderRadius: 100, cursor: "pointer", fontFamily: "inherit", fontWeight: 600, whiteSpace: "nowrap", zIndex: 1000, boxShadow: "0 4px 20px rgba(0,0,0,0.4)", display: "flex", alignItems: "center", gap: 8, animation: "popIn .2s ease" }}>
+          <span style={{ color: C.muted }}>deleted “{undoDel.ex.n}”</span>
+          <span style={{ color: C.timer, fontWeight: 700 }}>UNDO</span>
+        </button>
+      )}
     </div>
   );
 }
