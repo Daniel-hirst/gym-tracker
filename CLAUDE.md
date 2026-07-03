@@ -12,7 +12,9 @@ When Dan pastes a new week/programme:
 
 1. Edit the `DAYS` array at the top of `src/GymTracker.tsx` — it holds every day's
    exercises with per-block prescriptions (`b` = [Block 1, Block 2, Block 3, Deload],
-   each `{s: sets, r: reps, w: weight string}`; `rest` in seconds).
+   each `{s: sets, r: reps, w: weight string}`; `rest` in seconds; `t` = target RPE).
+   There is also a `CYCLE` constant shown in the header and session exports — bump it
+   when the PT starts a new cycle.
 2. Bump `PLAN_VERSION` by 1 (same file, just above `DAYS`) — phones only rebuild the
    plan when it or `CURRENT_BLOCK` changes. Rebuilding keeps PBs and history but resets
    ticks, notes and any in-app weight edits, so it should happen at week boundaries.

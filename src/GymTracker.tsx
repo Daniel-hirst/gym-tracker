@@ -6,12 +6,13 @@ const BLOCKS = ["Block 1", "Block 2", "Block 3", "Deload"];
 // ═══ EDIT THESE when the programme changes, then redeploy with `npm run deploy` ═══
 // 0 = Block 1, 1 = Block 2, 2 = Block 3, 3 = Deload
 const CURRENT_BLOCK = 0;
+const CYCLE = 2;
 // Bump by 1 whenever DAYS below is edited (new weights, exercises, etc.) — phones only
 // rebuild the plan when this or CURRENT_BLOCK changes. PBs and history always carry over.
-const PLAN_VERSION = 1;
+const PLAN_VERSION = 2;
 
 type SetSpec = { s: number; r: number; w: string };
-type ExerciseDef = { n: string; b: SetSpec[]; rest: number };
+type ExerciseDef = { n: string; b: SetSpec[]; rest: number; t: number };
 type DayDef = {
   name: string; sub: string; emoji: string;
   color: string; glow: string; grad: string; bg: string;
@@ -20,7 +21,7 @@ type DayDef = {
 type WorkSet = { id: string; r: number; w: string; done: boolean; startW: string };
 type Exercise = {
   id: string; n: string; sets: WorkSet[]; note: string;
-  pb: number | null; rpe: number | null; rest: number; collapsed: boolean;
+  pb: number | null; rpe: number | null; target: number | null; rest: number; collapsed: boolean;
 };
 type DayState = { startedAt: number | null; ex: Exercise[] };
 type HistorySet = { r: number; w: string; done: boolean };
@@ -32,62 +33,62 @@ const DAYS: DayDef[] = [
     name: "Push", sub: "SHOULDERS · CHEST · TRICEPS", emoji: "💪",
     color: "#ff6b6b", glow: "rgba(255,107,107,0.25)", grad: "linear-gradient(135deg, #ff6b6b, #ff8e53)", bg: "rgba(255,107,107,0.08)",
     ex: [
-      { n: "Barbell OHP",       b: [{s:4,r:10,w:"35kg"},{s:4,r:8,w:"37.5kg"},{s:4,r:6,w:"42.5kg"},{s:2,r:8,w:"32.5kg"}], rest:120 },
-      { n: "Incline DB Press",  b: [{s:4,r:10,w:"20kg"},{s:4,r:8,w:"22.5kg"},{s:4,r:6,w:"25kg"},{s:2,r:8,w:"18kg"}], rest:105 },
-      { n: "Pec Dec",           b: [{s:3,r:12,w:"Stack 7"},{s:3,r:10,w:"Stack 8"},{s:3,r:8,w:"Stack 9"},{s:2,r:10,w:"Stack 6"}], rest:75 },
-      { n: "Lateral Raise DB",  b: [{s:3,r:15,w:"8kg"},{s:3,r:12,w:"9kg"},{s:3,r:10,w:"10kg"},{s:2,r:12,w:"7.5kg"}], rest:60 },
-      { n: "Face Pull cable",   b: [{s:3,r:15,w:"Light"},{s:3,r:15,w:"Light"},{s:3,r:15,w:"Light"},{s:2,r:15,w:"Light"}], rest:60 },
+      { n: "Barbell OHP",       b: [{s:4,r:10,w:"35kg"},{s:4,r:8,w:"37.5kg"},{s:4,r:6,w:"42.5kg"},{s:2,r:8,w:"32.5kg"}], rest:120, t:7 },
+      { n: "Incline DB Press",  b: [{s:4,r:10,w:"20kg"},{s:4,r:8,w:"22.5kg"},{s:4,r:6,w:"25kg"},{s:2,r:8,w:"18kg"}], rest:105, t:7 },
+      { n: "Pec Dec",           b: [{s:3,r:12,w:"Stack 7"},{s:3,r:10,w:"Stack 8"},{s:3,r:8,w:"Stack 9"},{s:2,r:10,w:"Stack 6"}], rest:75, t:7 },
+      { n: "Lateral Raise DB",  b: [{s:3,r:15,w:"8kg"},{s:3,r:12,w:"9kg"},{s:3,r:10,w:"10kg"},{s:2,r:12,w:"7.5kg"}], rest:60, t:7 },
+      { n: "Face Pull cable",   b: [{s:3,r:15,w:"Light"},{s:3,r:15,w:"Light"},{s:3,r:15,w:"Light"},{s:2,r:15,w:"Light"}], rest:60, t:6 },
     ]
   },
   {
     name: "Pull", sub: "BACK · BICEPS · REAR DELTS", emoji: "🏋️",
     color: "#4ecdc4", glow: "rgba(78,205,196,0.25)", grad: "linear-gradient(135deg, #4ecdc4, #44a8c8)", bg: "rgba(78,205,196,0.08)",
     ex: [
-      { n: "Conventional Deadlift",  b: [{s:4,r:6,w:"90kg"},{s:4,r:5,w:"100kg"},{s:4,r:4,w:"107.5kg"},{s:2,r:4,w:"85kg"}], rest:150 },
-      { n: "Barbell Bent Over Row",  b: [{s:4,r:10,w:"50kg"},{s:4,r:8,w:"55kg"},{s:4,r:6,w:"60kg"},{s:2,r:8,w:"45kg"}], rest:120 },
-      { n: "Pull Ups",               b: [{s:3,r:8,w:"Band"},{s:3,r:6,w:"BW"},{s:3,r:5,w:"Weighted"},{s:2,r:8,w:"Band"}], rest:90 },
-      { n: "Hammer Curl",            b: [{s:3,r:12,w:"12.5kg"},{s:3,r:10,w:"15kg"},{s:3,r:8,w:"15kg"},{s:2,r:10,w:"10kg"}], rest:75 },
-      { n: "Rear Delt Fly DB",       b: [{s:3,r:15,w:"5kg"},{s:3,r:12,w:"6kg"},{s:3,r:10,w:"6kg"},{s:2,r:12,w:"5kg"}], rest:75 },
+      { n: "Conventional Deadlift",  b: [{s:4,r:6,w:"90kg"},{s:4,r:5,w:"100kg"},{s:4,r:4,w:"107.5kg"},{s:2,r:4,w:"85kg"}], rest:150, t:7 },
+      { n: "Barbell Bent Over Row",  b: [{s:4,r:10,w:"50kg"},{s:4,r:8,w:"55kg"},{s:4,r:6,w:"60kg"},{s:2,r:8,w:"45kg"}], rest:120, t:7 },
+      { n: "Pull Ups",               b: [{s:3,r:8,w:"BW/band"},{s:3,r:6,w:"BW"},{s:3,r:5,w:"Weighted"},{s:2,r:8,w:"BW/band"}], rest:90, t:7 },
+      { n: "Hammer Curl",            b: [{s:3,r:12,w:"12.5kg"},{s:3,r:10,w:"15kg"},{s:3,r:8,w:"15kg"},{s:2,r:10,w:"10kg"}], rest:75, t:7 },
+      { n: "Rear Delt Fly DB",       b: [{s:3,r:15,w:"5kg"},{s:3,r:12,w:"6kg"},{s:3,r:10,w:"6kg"},{s:2,r:12,w:"5kg"}], rest:75, t:7 },
     ]
   },
   {
     name: "Upper", sub: "HYPERTROPHY VOLUME", emoji: "🔷",
     color: "#a78bfa", glow: "rgba(167,139,250,0.25)", grad: "linear-gradient(135deg, #a78bfa, #7c3aed)", bg: "rgba(167,139,250,0.08)",
     ex: [
-      { n: "Incline DB Press",      b: [{s:4,r:12,w:"20kg"},{s:4,r:10,w:"22.5kg"},{s:4,r:8,w:"25kg"},{s:2,r:10,w:"18kg"}], rest:105 },
-      { n: "Chest Supported Row",   b: [{s:4,r:12,w:"TBC"},{s:4,r:10,w:"Progress"},{s:4,r:8,w:"Heavy"},{s:2,r:10,w:"Light"}], rest:90 },
-      { n: "Pec Dec",               b: [{s:3,r:15,w:"Stack 6"},{s:3,r:12,w:"Stack 7"},{s:3,r:10,w:"Stack 8"},{s:2,r:12,w:"Stack 5"}], rest:75 },
-      { n: "Single Arm Pulldown",   b: [{s:3,r:12,w:"TBC"},{s:3,r:10,w:"Progress"},{s:3,r:8,w:"Heavy"},{s:2,r:10,w:"Light"}], rest:75 },
-      { n: "Lateral Raise DB",      b: [{s:3,r:15,w:"8kg"},{s:3,r:12,w:"9kg"},{s:3,r:10,w:"10kg"},{s:2,r:12,w:"7.5kg"}], rest:60 },
-      { n: "Face Pull cable",       b: [{s:3,r:15,w:"Light"},{s:3,r:15,w:"Light"},{s:3,r:15,w:"Light"},{s:2,r:15,w:"Light"}], rest:60 },
+      { n: "Incline DB Press",      b: [{s:4,r:12,w:"20kg"},{s:4,r:10,w:"22.5kg"},{s:4,r:8,w:"25kg"},{s:2,r:10,w:"18kg"}], rest:105, t:7 },
+      { n: "Chest Supported Row",   b: [{s:4,r:12,w:"TBC"},{s:4,r:10,w:"Progress"},{s:4,r:8,w:"Heavy"},{s:2,r:10,w:"Light"}], rest:90, t:7 },
+      { n: "Pec Dec",               b: [{s:3,r:15,w:"Stack 6"},{s:3,r:12,w:"Stack 7"},{s:3,r:10,w:"Stack 8"},{s:2,r:12,w:"Stack 5"}], rest:75, t:7 },
+      { n: "Single Arm Pulldown",   b: [{s:3,r:12,w:"TBC"},{s:3,r:10,w:"Progress"},{s:3,r:8,w:"Heavy"},{s:2,r:10,w:"Light"}], rest:75, t:7 },
+      { n: "Lateral Raise DB",      b: [{s:3,r:15,w:"8kg"},{s:3,r:12,w:"9kg"},{s:3,r:10,w:"10kg"},{s:2,r:12,w:"7.5kg"}], rest:60, t:7 },
+      { n: "Face Pull cable",       b: [{s:3,r:15,w:"Light"},{s:3,r:15,w:"Light"},{s:3,r:15,w:"Light"},{s:2,r:15,w:"Light"}], rest:60, t:6 },
     ]
   },
   {
     name: "Arms", sub: "BICEPS · TRICEPS · FOREARMS", emoji: "🦾",
     color: "#f9c74f", glow: "rgba(249,199,79,0.25)", grad: "linear-gradient(135deg, #f9c74f, #f3722c)", bg: "rgba(249,199,79,0.08)",
     ex: [
-      { n: "Close Grip Bench Press",     b: [{s:4,r:12,w:"50kg"},{s:4,r:10,w:"55kg"},{s:4,r:8,w:"60kg"},{s:2,r:10,w:"45kg"}], rest:90 },
-      { n: "Overhead Tricep Ext rope",   b: [{s:3,r:12,w:"Stack 6"},{s:3,r:10,w:"Stack 7"},{s:3,r:8,w:"Stack 8"},{s:2,r:10,w:"Stack 5"}], rest:75 },
-      { n: "Tricep Pushdown rope",       b: [{s:3,r:12,w:"Stack 6"},{s:3,r:10,w:"Stack 7"},{s:3,r:8,w:"Stack 8"},{s:2,r:10,w:"Stack 5"}], rest:60 },
-      { n: "Incline DB Curl",            b: [{s:3,r:12,w:"10kg"},{s:3,r:10,w:"12.5kg"},{s:3,r:8,w:"12.5kg"},{s:2,r:10,w:"9kg"}], rest:75 },
-      { n: "Preacher Curl",              b: [{s:3,r:12,w:"7.5kg"},{s:3,r:10,w:"8.75kg"},{s:3,r:8,w:"8.75kg"},{s:2,r:10,w:"6.25kg"}], rest:75 },
-      { n: "Hammer Curl",                b: [{s:3,r:12,w:"12.5kg"},{s:3,r:10,w:"15kg"},{s:3,r:8,w:"15kg"},{s:2,r:10,w:"10kg"}], rest:60 },
-      { n: "Reverse Curl",               b: [{s:3,r:12,w:"8kg"},{s:3,r:12,w:"10kg"},{s:3,r:10,w:"10kg"},{s:2,r:12,w:"7.5kg"}], rest:60 },
+      { n: "Close Grip Bench Press",     b: [{s:4,r:12,w:"50kg"},{s:4,r:10,w:"55kg"},{s:4,r:8,w:"60kg"},{s:2,r:10,w:"45kg"}], rest:90, t:7 },
+      { n: "Overhead Tricep Ext rope",   b: [{s:3,r:12,w:"Stack 6"},{s:3,r:10,w:"Stack 7"},{s:3,r:8,w:"Stack 8"},{s:2,r:10,w:"Stack 5"}], rest:75, t:7 },
+      { n: "Tricep Pushdown rope",       b: [{s:3,r:12,w:"Stack 6"},{s:3,r:10,w:"Stack 7"},{s:3,r:8,w:"Stack 8"},{s:2,r:10,w:"Stack 5"}], rest:60, t:7 },
+      { n: "Incline DB Curl",            b: [{s:3,r:12,w:"10kg"},{s:3,r:10,w:"12.5kg"},{s:3,r:8,w:"12.5kg"},{s:2,r:10,w:"9kg"}], rest:75, t:7 },
+      { n: "Preacher Curl",              b: [{s:3,r:12,w:"7.5kg/side"},{s:3,r:10,w:"8.75kg/side"},{s:3,r:8,w:"8.75kg/side"},{s:2,r:10,w:"6.25kg/side"}], rest:75, t:7 },
+      { n: "Hammer Curl",                b: [{s:3,r:12,w:"12.5kg"},{s:3,r:10,w:"15kg"},{s:3,r:8,w:"15kg"},{s:2,r:10,w:"10kg"}], rest:60, t:7 },
+      { n: "Reverse Curl",               b: [{s:3,r:12,w:"8kg"},{s:3,r:12,w:"10kg"},{s:3,r:10,w:"10kg"},{s:2,r:12,w:"7.5kg"}], rest:60, t:7 },
     ]
   },
   {
     name: "Legs", sub: "LEGS · CORE", emoji: "🔥",
     color: "#f97316", glow: "rgba(249,115,22,0.25)", grad: "linear-gradient(135deg, #f97316, #ef4444)", bg: "rgba(249,115,22,0.08)",
     ex: [
-      { n: "Barbell Back Squat",   b: [{s:4,r:8,w:"65kg"},{s:4,r:6,w:"72.5kg"},{s:4,r:5,w:"80kg"},{s:2,r:6,w:"55kg"}], rest:150 },
-      { n: "Romanian Deadlift",    b: [{s:3,r:10,w:"65kg"},{s:3,r:8,w:"72.5kg"},{s:3,r:6,w:"80kg"},{s:2,r:8,w:"57.5kg"}], rest:120 },
-      { n: "Leg Press",            b: [{s:3,r:12,w:"30kg/side"},{s:3,r:10,w:"35kg/side"},{s:3,r:8,w:"40kg/side"},{s:2,r:10,w:"25kg/side"}], rest:120 },
-      { n: "Step Ups",             b: [{s:3,r:10,w:"12.5kg"},{s:3,r:10,w:"15kg"},{s:3,r:10,w:"17.5kg"},{s:2,r:10,w:"10kg"}], rest:90 },
-      { n: "Calf Raise",           b: [{s:3,r:15,w:"40kg/side"},{s:3,r:12,w:"45kg/side"},{s:3,r:10,w:"50kg/side"},{s:2,r:12,w:"32.5kg/side"}], rest:90 },
-      { n: "Cable Crunch",         b: [{s:3,r:15,w:"65kg"},{s:3,r:12,w:"70kg"},{s:3,r:12,w:"75kg"},{s:2,r:12,w:"55kg"}], rest:60 },
-      { n: "Hanging Leg Raise",    b: [{s:3,r:12,w:"BW"},{s:3,r:10,w:"BW"},{s:3,r:10,w:"BW"},{s:2,r:10,w:"BW"}], rest:60 },
-      { n: "Dumbbell Side Bend",   b: [{s:3,r:15,w:"20kg"},{s:3,r:15,w:"22.5kg"},{s:3,r:15,w:"25kg"},{s:2,r:15,w:"15kg"}], rest:60 },
-      { n: "Pallof Press",         b: [{s:3,r:10,w:"17.5kg"},{s:3,r:10,w:"20kg"},{s:3,r:10,w:"22.5kg"},{s:2,r:10,w:"12.5kg"}], rest:60 },
+      { n: "Barbell Back Squat",   b: [{s:4,r:8,w:"65kg"},{s:4,r:6,w:"72.5kg"},{s:4,r:5,w:"80kg"},{s:2,r:6,w:"55kg"}], rest:150, t:7 },
+      { n: "Romanian Deadlift",    b: [{s:3,r:10,w:"65kg"},{s:3,r:8,w:"72.5kg"},{s:3,r:6,w:"80kg"},{s:2,r:8,w:"57.5kg"}], rest:120, t:7 },
+      { n: "Leg Press",            b: [{s:3,r:12,w:"30kg/side"},{s:3,r:10,w:"35kg/side"},{s:3,r:8,w:"40kg/side"},{s:2,r:10,w:"25kg/side"}], rest:120, t:7 },
+      { n: "Step Ups",             b: [{s:3,r:10,w:"12.5kg/hand"},{s:3,r:10,w:"15kg/hand"},{s:3,r:10,w:"17.5kg/hand"},{s:2,r:10,w:"10kg/hand"}], rest:90, t:7 },
+      { n: "Calf Raise",           b: [{s:3,r:15,w:"40kg/side"},{s:3,r:12,w:"45kg/side"},{s:3,r:10,w:"50kg/side"},{s:2,r:12,w:"32.5kg/side"}], rest:90, t:7 },
+      { n: "Cable Crunch",         b: [{s:3,r:15,w:"65kg"},{s:3,r:12,w:"70kg"},{s:3,r:12,w:"75kg"},{s:2,r:12,w:"55kg"}], rest:60, t:7 },
+      { n: "Hanging Leg Raise",    b: [{s:3,r:12,w:"BW"},{s:3,r:10,w:"BW"},{s:3,r:10,w:"BW"},{s:2,r:10,w:"BW"}], rest:60, t:7 },
+      { n: "Dumbbell Side Bend",   b: [{s:3,r:15,w:"20kg/side"},{s:3,r:15,w:"22.5kg/side"},{s:3,r:15,w:"25kg/side"},{s:2,r:15,w:"15kg/side"}], rest:60, t:7 },
+      { n: "Pallof Press",         b: [{s:3,r:10,w:"17.5kg"},{s:3,r:10,w:"20kg"},{s:3,r:10,w:"22.5kg"},{s:2,r:10,w:"12.5kg"}], rest:60, t:7 },
     ]
   },
 ];
@@ -100,7 +101,7 @@ function initState(blockIdx: number): DayState[] {
     startedAt: null,
     ex: d.ex.map(e => {
       const b = e.b[blockIdx];
-      return { id: uid(), n: e.n, sets: makeSets(b.s, b.r, b.w), note: "", pb: null, rpe: null, rest: e.rest || 90, collapsed: false };
+      return { id: uid(), n: e.n, sets: makeSets(b.s, b.r, b.w), note: "", pb: null, rpe: null, target: e.t, rest: e.rest || 90, collapsed: false };
     })
   }));
 }
@@ -365,12 +366,12 @@ export default function GymTracker() {
       missing.forEach(p => {
         const b = p.b[CURRENT_BLOCK];
         const idx = Math.min(planned.indexOf(p), s[cur].ex.length);
-        s[cur].ex.splice(idx, 0, { id: uid(), n: p.n, sets: makeSets(b.s, b.r, b.w), note: "", pb: null, rpe: null, rest: p.rest || 90, collapsed: false });
+        s[cur].ex.splice(idx, 0, { id: uid(), n: p.n, sets: makeSets(b.s, b.r, b.w), note: "", pb: null, rpe: null, target: p.t, rest: p.rest || 90, collapsed: false });
       });
     });
     showToast(`Restored ${missing.length} exercise${missing.length > 1 ? "s" : ""} from the plan`);
   }
-  function addEx() { update(s => { s[cur].ex.push({ id: uid(), n: "New exercise", sets: makeSets(3,10,""), note: "", pb: null, rpe: null, rest: 90, collapsed: false }); }); }
+  function addEx() { update(s => { s[cur].ex.push({ id: uid(), n: "New exercise", sets: makeSets(3,10,""), note: "", pb: null, rpe: null, target: null, rest: 90, collapsed: false }); }); }
   function resetDay() {
     if (!window.confirm("Reset this day?")) return;
     update(s => { s[cur].startedAt = null; s[cur].ex.forEach(e => { e.sets.forEach(set => { set.done = false; }); e.note = ""; e.collapsed = false; }); });
@@ -434,7 +435,7 @@ export default function GymTracker() {
 
   function copySession() {
     const today = new Date().toLocaleDateString("en-GB", { weekday:"long", day:"numeric", month:"long" });
-    const lines = [`${day.emoji} ${day.name} — ${BLOCKS[CURRENT_BLOCK]} (${today})`];
+    const lines = [`${day.emoji} ${day.name} — Cycle ${CYCLE} · ${BLOCKS[CURRENT_BLOCK]} (${today})`];
     const stats: string[] = [];
     if (sessionMins) stats.push(`Duration: ${sessionMins} min`);
     if (sessionVol > 0) stats.push(`Volume: ${sessionVol.toLocaleString()}kg (completed kg sets)`);
@@ -444,8 +445,9 @@ export default function GymTracker() {
     const doneExs = exs.filter(e => e.sets.every(s => s.done));
     const partialExs = exs.filter(e => !e.sets.every(s => s.done) && e.sets.some(s => s.done));
     const skipExs = exs.filter(e => e.sets.every(s => !s.done));
-    if (doneExs.length) { lines.push("Completed:"); doneExs.forEach(e => { lines.push(`  ✓ ${e.n}${e.pb?` 🏆 PB: ${e.pb}kg`:""}${e.rpe?` | RPE ${e.rpe}`:""}`); e.sets.forEach((set,i) => lines.push(`      Set ${i+1}: ${set.r} reps @ ${set.w||"—"}${wasNote(set)}`)); if(e.note) lines.push(`      Note: ${e.note}`); }); }
-    if (partialExs.length) { lines.push(""); lines.push("Partial:"); partialExs.forEach(e => { lines.push(`  ~ ${e.n} — ${e.sets.filter(s=>s.done).length}/${e.sets.length} sets${e.rpe?` | RPE ${e.rpe}`:""}`); e.sets.forEach((set,i) => lines.push(`      Set ${i+1}: ${set.r} reps @ ${set.w||"—"}${wasNote(set)} ${set.done?"✓":"✗"}`)); if(e.note) lines.push(`      Note: ${e.note}`); }); }
+    const rpeNote = (e: Exercise) => e.rpe ? ` | RPE ${e.rpe}${e.target ? ` (target ${e.target})` : ""}` : e.target ? ` | target RPE ${e.target}` : "";
+    if (doneExs.length) { lines.push("Completed:"); doneExs.forEach(e => { lines.push(`  ✓ ${e.n}${e.pb?` 🏆 PB: ${e.pb}kg`:""}${rpeNote(e)}`); e.sets.forEach((set,i) => lines.push(`      Set ${i+1}: ${set.r} reps @ ${set.w||"—"}${wasNote(set)}`)); if(e.note) lines.push(`      Note: ${e.note}`); }); }
+    if (partialExs.length) { lines.push(""); lines.push("Partial:"); partialExs.forEach(e => { lines.push(`  ~ ${e.n} — ${e.sets.filter(s=>s.done).length}/${e.sets.length} sets${rpeNote(e)}`); e.sets.forEach((set,i) => lines.push(`      Set ${i+1}: ${set.r} reps @ ${set.w||"—"}${wasNote(set)} ${set.done?"✓":"✗"}`)); if(e.note) lines.push(`      Note: ${e.note}`); }); }
     if (skipExs.length) { lines.push(""); lines.push("Skipped:"); skipExs.forEach(e => lines.push(`  ✗ ${e.n}`)); }
     lines.push(""); lines.push(`Total: ${doneTotal}/${exs.length} completed.`);
     navigator.clipboard.writeText(lines.join("\n"))
@@ -470,7 +472,7 @@ export default function GymTracker() {
           <div style={{ position: "absolute", top: -40, left: -20, width: 200, height: 200, borderRadius: "50%", background: day.glow, filter: "blur(60px)", pointerEvents: "none", opacity: 0.5 }} />
           <div style={{ position: "relative", display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 10 }}>
             <div>
-              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.12em", color: C.muted, marginBottom: 6, textTransform: "uppercase" }}>Dan's Programme · {BLOCKS[CURRENT_BLOCK]}</div>
+              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.12em", color: C.muted, marginBottom: 6, textTransform: "uppercase" }}>Dan's Programme · Cycle {CYCLE} · {BLOCKS[CURRENT_BLOCK]}</div>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ width: 42, height: 42, borderRadius: 12, background: day.grad, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, boxShadow: `0 4px 16px ${day.glow}` }}>{day.emoji}</div>
                 <div>
@@ -553,11 +555,14 @@ export default function GymTracker() {
                 {!isCollapsed && (<>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 5, flex: 1 }}>
-                      <span style={{ fontSize: 11, color: C.muted, fontWeight: 700, letterSpacing: "0.1em" }}>RPE</span>
+                      <span style={{ fontSize: 11, color: C.muted, fontWeight: 700, letterSpacing: "0.1em" }}>RPE{e.target ? <span style={{ color: C.faint, letterSpacing: 0 }}> →{e.target}</span> : null}</span>
                       <div style={{ display: "flex", gap: 4 }}>
-                        {[6,7,8,9,10].map(v => (
-                          <button key={v} onClick={() => upRpe(j, v)} style={{ width: 36, height: 36, borderRadius: 9, border: `1px solid ${e.rpe === v ? RPE_COLORS[v] : C.border2}`, background: e.rpe === v ? RPE_COLORS[v] + "22" : "transparent", color: e.rpe === v ? RPE_COLORS[v] : C.muted, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s" }}>{v}</button>
-                        ))}
+                        {[6,7,8,9,10].map(v => {
+                          const isTarget = e.target === v && e.rpe !== v;
+                          return (
+                            <button key={v} onClick={() => upRpe(j, v)} style={{ width: 36, height: 36, borderRadius: 9, border: e.rpe === v ? `1px solid ${RPE_COLORS[v]}` : isTarget ? `1px dashed ${RPE_COLORS[v]}88` : `1px solid ${C.border2}`, background: e.rpe === v ? RPE_COLORS[v] + "22" : "transparent", color: e.rpe === v ? RPE_COLORS[v] : isTarget ? RPE_COLORS[v] + "cc" : C.muted, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s" }}>{v}</button>
+                          );
+                        })}
                       </div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 6, background: C.surface2, borderRadius: 10, padding: "5px 8px" }}>
