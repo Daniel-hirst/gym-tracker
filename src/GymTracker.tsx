@@ -146,6 +146,104 @@ const C = {
 
 const RPE_COLORS = ["","","","","#34d399","#34d399","#34d399","#fbbf24","#fb923c","#f87171","#f87171"];
 
+// ── Progress charts / estimated 1RM ──────────────────────────────────────────
+// Epley e1RM; only computed for plain-kg sets (same comparability rule as PBs)
+function epley(w: number, r: number): number { return r <= 1 ? w : w * (1 + r / 30); }
+function fmtKg(v: number): string { return String(Math.round(v * 2) / 2); }
+function fmtNum(v: number): string { return v >= 1000 ? Math.round(v).toLocaleString() : fmtKg(v); }
+
+type SeriesPoint = { date: Date; e1rm: number | null; top: number | null; vol: number | null };
+
+function exerciseSeries(history: HistoryEntry[], name: string): SeriesPoint[] {
+  const key = name.trim().toLowerCase();
+  const pts: SeriesPoint[] = [];
+  for (const h of history) {
+    const m = h.ex.find(x => x.n.trim().toLowerCase() === key && x.sets.some(s => s.done));
+    if (!m) continue;
+    let top: number | null = null, e1: number | null = null, vol = 0;
+    for (const s of m.sets) {
+      if (!s.done) continue;
+      const w = parseWeight(s.w);
+      if (w == null) continue;
+      if (/kg/i.test(s.w)) vol += w * s.r;
+      if (isKgWeight(s.w)) {
+        if (top == null || w > top) top = w;
+        const e = epley(w, s.r);
+        if (e1 == null || e > e1) e1 = e;
+      }
+    }
+    if (top != null || vol > 0) pts.push({ date: new Date(h.date), e1rm: e1, top, vol: vol > 0 ? Math.round(vol) : null });
+  }
+  return pts;
+}
+
+function bestE1rm(history: HistoryEntry[], name: string): number | null {
+  let best: number | null = null;
+  exerciseSeries(history, name).forEach(p => { if (p.e1rm != null && (best == null || p.e1rm > best)) best = p.e1rm; });
+  return best;
+}
+
+function niceTicks(lo: number, hi: number): number[] {
+  const span = hi - lo;
+  const pow = Math.pow(10, Math.floor(Math.log10(span / 3)));
+  let step = pow;
+  for (const c of [1, 2, 2.5, 5, 10].map(m => m * pow)) if (span / c >= 2.2) step = c;
+  const first = Math.ceil(lo / step) * step;
+  const out: number[] = [];
+  for (let v = first; v <= hi + 1e-9; v += step) out.push(Math.round(v * 100) / 100);
+  return out;
+}
+
+const CHART_ACCENT = "#0284c7"; // validated ≥3:1 vs the dark surface
+
+export function LineChart({ points, unit, sel, onSel }: { points: { date: Date; v: number }[]; unit: string; sel: number; onSel: (i: number) => void }) {
+  const W = 360, H = 190, L = 40, R = 14, T = 26, B = 22;
+  const vals = points.map(p => p.v);
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  const pad = (hi - lo) * 0.15 || hi * 0.08 || 1;
+  lo = Math.max(0, lo - pad); hi += pad;
+  const x = (i: number) => points.length === 1 ? L + (W - L - R) / 2 : L + (i * (W - L - R)) / (points.length - 1);
+  const y = (v: number) => T + (H - T - B) * (1 - (v - lo) / (hi - lo));
+  const last = points.length - 1;
+  const maxI = vals.indexOf(Math.max(...vals));
+  const path = points.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(" ");
+  const dt = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  const selP = sel >= 0 && sel < points.length ? points[sel] : null;
+  const tipW = 96, tipX = selP ? Math.min(Math.max(x(sel) - tipW / 2, L), W - R - tipW) : 0;
+  const tipAbove = selP ? y(selP.v) > T + 46 : true;
+  const tipY = selP ? (tipAbove ? y(selP.v) - 44 : y(selP.v) + 12) : 0;
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", display: "block" }}>
+      {niceTicks(lo, hi).map(t => (
+        <g key={t}>
+          <line x1={L} x2={W - R} y1={y(t)} y2={y(t)} stroke="rgba(255,255,255,0.07)" strokeWidth={1} />
+          <text x={L - 6} y={y(t) + 3} textAnchor="end" fontSize={9} fill={C.faint} fontFamily="inherit">{fmtNum(t)}</text>
+        </g>
+      ))}
+      <path d={path} fill="none" stroke={CHART_ACCENT} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+      {points.map((p, i) => (
+        <circle key={i} cx={x(i)} cy={y(p.v)} r={i === last ? 5 : 4} fill={CHART_ACCENT} stroke={C.surface} strokeWidth={2} />
+      ))}
+      {maxI !== last && points.length > 1 && (
+        <text x={x(maxI)} y={y(points[maxI].v) - 9} textAnchor="middle" fontSize={10} fill={C.muted} fontFamily="inherit">{fmtNum(points[maxI].v)}</text>
+      )}
+      <text x={Math.min(x(last), W - R - 4)} y={y(points[last].v) - 9} textAnchor={x(last) > W - R - 30 ? "end" : "middle"} fontSize={10} fontWeight={700} fill={C.text} fontFamily="inherit">{fmtNum(points[last].v)}</text>
+      <text x={L} y={H - 6} fontSize={9} fill={C.faint} fontFamily="inherit">{dt(points[0].date)}</text>
+      {points.length > 1 && <text x={W - R} y={H - 6} textAnchor="end" fontSize={9} fill={C.faint} fontFamily="inherit">{dt(points[last].date)}</text>}
+      {points.map((_, i) => (
+        <rect key={`h${i}`} x={x(i) - 14} y={0} width={28} height={H} fill="transparent" onClick={() => onSel(sel === i ? -1 : i)} />
+      ))}
+      {selP && (
+        <g pointerEvents="none">
+          <rect x={tipX} y={tipY} width={tipW} height={32} rx={7} fill={C.surface3} stroke="rgba(255,255,255,0.12)" strokeWidth={1} />
+          <text x={tipX + tipW / 2} y={tipY + 13} textAnchor="middle" fontSize={9} fill={C.muted} fontFamily="inherit">{dt(selP.date)}</text>
+          <text x={tipX + tipW / 2} y={tipY + 26} textAnchor="middle" fontSize={11} fontWeight={700} fill={C.text} fontFamily="inherit">{fmtNum(selP.v)}{unit}</text>
+        </g>
+      )}
+    </svg>
+  );
+}
+
 const Adj = ({ onClick, children }: { onClick: () => void; children: ReactNode }) => (
   <button onClick={onClick} style={{ width: 38, height: 38, borderRadius: 10, border: `1px solid ${C.border2}`, background: C.surface3, color: C.text, fontSize: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontFamily: "inherit" }}>{children}</button>
 );
@@ -187,6 +285,11 @@ export default function GymTracker() {
   const toastRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [undoDel, setUndoDel] = useState<{ ex: Exercise; day: number; idx: number } | null>(null);
   const undoRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showProgress, setShowProgress] = useState(false);
+  const [chartEx, setChartEx] = useState<string | null>(null);
+  const [metric, setMetric] = useState<"e1rm" | "top" | "vol">("e1rm");
+  const [chartSel, setChartSel] = useState(-1);
+  const [openSession, setOpenSession] = useState(-1);
 
   const day = DAYS[cur];
   const exs = state[cur].ex;
@@ -455,6 +558,23 @@ export default function GymTracker() {
       .catch(() => showToast("Copy failed"));
   }
 
+  // Exercises with logged history, plan order first, for the progress screen
+  const chartNames: string[] = [];
+  history.forEach(h => h.ex.forEach(e => { if (e.sets.some(s => s.done) && !chartNames.includes(e.n)) chartNames.push(e.n); }));
+  const planOrder = DAYS.flatMap(d => d.ex.map(e => e.n));
+  chartNames.sort((a, b) => {
+    const ia = planOrder.indexOf(a), ib = planOrder.indexOf(b);
+    return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib);
+  });
+  const activeChartEx = chartEx && chartNames.includes(chartEx) ? chartEx : chartNames[0] ?? null;
+  const series = activeChartEx ? exerciseSeries(history, activeChartEx) : [];
+  const chartPts = series.flatMap(p => (p[metric] != null ? [{ date: p.date, v: p[metric] as number }] : []));
+  const METRICS: { key: "e1rm" | "top" | "vol"; label: string; unit: string }[] = [
+    { key: "e1rm", label: "est. 1RM", unit: "kg" },
+    { key: "top", label: "top weight", unit: "kg" },
+    { key: "vol", label: "volume", unit: "kg" },
+  ];
+
   const timerColor = restDone ? C.timerDone : C.timer;
   const radius = 16;
   const circ = 2 * Math.PI * radius;
@@ -534,7 +654,11 @@ export default function GymTracker() {
                 <div style={{ height: 2, borderRadius: 2, marginBottom: 12, background: allDone ? `linear-gradient(90deg, ${C.success}, transparent)` : isPb ? `linear-gradient(90deg, ${C.pb}, transparent)` : `linear-gradient(90deg, ${day.color}, transparent)`, opacity: 0.8 }} />
 
                 {isPb && <div style={{ background: `linear-gradient(135deg, ${C.pb}, #f59e0b)`, color: "#000", fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 100, display: "inline-flex", gap: 4, marginBottom: 8 }}>🏆 NEW PERSONAL BEST!</div>}
-                {e.pb && !isPb && <div style={{ color: C.pb, fontSize: 11, fontWeight: 600, marginBottom: 6, display: "flex", alignItems: "center", gap: 4 }}>🏆 <span>PB: {e.pb}kg</span></div>}
+                {e.pb && !isPb && (() => { const bE = bestE1rm(history, e.n); return (
+                  <div style={{ color: C.pb, fontSize: 11, fontWeight: 600, marginBottom: 6, display: "flex", alignItems: "center", gap: 4 }}>
+                    🏆 <span>PB: {e.pb}kg</span>{bE ? <span style={{ color: C.muted, fontWeight: 600 }}> · e1RM ~{fmtKg(bE)}kg</span> : null}
+                  </div>
+                ); })()}
                 {!isCollapsed && (() => { const lt = lastTime(e.n); return lt ? <div style={{ fontSize: 11, color: C.muted, marginBottom: 6 }}>↩ last: {lt.label} · {lt.date.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}{lt.next ? <span style={{ color: C.success, fontWeight: 700 }}> · try {lt.next}kg ↗</span> : null}</div> : null; })()}
 
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: isCollapsed ? 0 : 12 }}>
@@ -624,19 +748,10 @@ export default function GymTracker() {
             <span style={{ fontSize: 13, fontWeight: 600, color: pct === 100 ? C.success : C.muted }}>{pct === 100 ? "session complete! 🎉" : `${pct}% complete`}{sessionMins ? ` · ${sessionMins} min` : ""}{sessionVol > 0 ? ` · ${sessionVol.toLocaleString()}kg` : ""}</span>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => setShowPlateCalc(p => !p)} style={{ fontSize: 12, color: showPlateCalc ? C.timer : C.muted, background: showPlateCalc ? "rgba(56,189,248,0.1)" : "transparent", border: `1px solid ${showPlateCalc ? C.timer + "60" : C.border2}`, borderRadius: 8, cursor: "pointer", fontFamily: "inherit", padding: "8px 12px", fontWeight: 600, transition: "all .15s" }}>🏋️ plates</button>
-              <button onClick={backup} style={{ fontSize: 12, color: C.muted, background: "transparent", border: `1px solid ${C.border2}`, borderRadius: 8, cursor: "pointer", fontFamily: "inherit", padding: "8px 12px", fontWeight: 600 }}>backup</button>
-              <button onClick={() => setShowRestore(p => !p)} style={{ fontSize: 12, color: showRestore ? C.timer : C.muted, background: showRestore ? "rgba(56,189,248,0.1)" : "transparent", border: `1px solid ${showRestore ? C.timer + "60" : C.border2}`, borderRadius: 8, cursor: "pointer", fontFamily: "inherit", padding: "8px 12px", fontWeight: 600 }}>restore</button>
+              <button onClick={() => { setShowProgress(true); setChartSel(-1); setOpenSession(-1); }} style={{ fontSize: 12, color: C.muted, background: "transparent", border: `1px solid ${C.border2}`, borderRadius: 8, cursor: "pointer", fontFamily: "inherit", padding: "8px 12px", fontWeight: 600 }}>📈 progress</button>
               <button onClick={resetDay} style={{ fontSize: 12, color: C.muted, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: "8px 10px" }}>reset</button>
             </div>
           </div>
-
-          {showRestore && (
-            <div style={{ background: C.surface2, borderRadius: 13, padding: 14, border: `1px solid rgba(56,189,248,0.15)` }}>
-              <div style={{ fontSize: 11, color: C.timer, fontWeight: 700, letterSpacing: "0.1em", marginBottom: 8 }}>RESTORE BACKUP</div>
-              <textarea value={restoreText} onChange={ev => setRestoreText(ev.target.value)} placeholder="Paste a backup here..." rows={3} style={{ width: "100%", background: C.surface3, border: `1px solid ${C.border2}`, borderRadius: 8, padding: "8px 10px", fontSize: 12, color: C.text, fontFamily: "inherit", outline: "none", resize: "none", boxSizing: "border-box", marginBottom: 8 }} />
-              <button onClick={restore} disabled={!restoreText.trim()} style={{ width: "100%", padding: 11, borderRadius: 8, border: `1px solid ${C.timer}44`, background: "rgba(56,189,248,0.1)", color: restoreText.trim() ? C.timer : C.faint, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>restore backup</button>
-            </div>
-          )}
 
           {showPlateCalc && (() => {
             const PLATES = [25, 20, 15, 10, 5, 2.5, 1.25];
@@ -693,6 +808,123 @@ export default function GymTracker() {
           <div style={{ textAlign: "center", fontSize: 10, color: C.faint }}>build {__BUILD_STAMP__}</div>
         </div>
       </div>
+
+      {/* Progress & history */}
+      {showProgress && (
+        <div className="scroll-area" style={{ position: "fixed", inset: 0, zIndex: 500, background: C.bg, overflowY: "auto" }}>
+          <div style={{ maxWidth: 460, margin: "0 auto", padding: "calc(18px + env(safe-area-inset-top)) 16px calc(30px + env(safe-area-inset-bottom))" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: -0.5 }}>📈 Progress</div>
+              <button onClick={() => setShowProgress(false)} style={{ width: 40, height: 40, borderRadius: 11, border: `1px solid ${C.border2}`, background: C.surface, color: C.muted, fontSize: 17, cursor: "pointer" }}>✕</button>
+            </div>
+
+            {history.length === 0 ? (
+              <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: 24, textAlign: "center", color: C.muted, fontSize: 14, lineHeight: 1.6 }}>
+                No sessions saved yet.<br />Finish a session and your charts start here. 💪
+              </div>
+            ) : (
+              <>
+                {/* Exercise picker */}
+                <div className="scroll-area" style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 10, marginBottom: 6 }}>
+                  {chartNames.map(n => (
+                    <button key={n} onClick={() => { setChartEx(n); setChartSel(-1); }} style={{ flexShrink: 0, padding: "8px 13px", borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", border: `1px solid ${n === activeChartEx ? C.timer + "60" : C.border2}`, background: n === activeChartEx ? "rgba(56,189,248,0.1)" : C.surface, color: n === activeChartEx ? C.timer : C.muted }}>{n}</button>
+                  ))}
+                </div>
+
+                {/* Metric toggle */}
+                <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
+                  {METRICS.map(m => (
+                    <button key={m.key} onClick={() => { setMetric(m.key); setChartSel(-1); }} style={{ flex: 1, padding: "9px 0", borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", border: `1px solid ${metric === m.key ? C.timer + "60" : C.border}`, background: metric === m.key ? "rgba(56,189,248,0.1)" : C.surface, color: metric === m.key ? C.timer : C.muted }}>{m.label}</button>
+                  ))}
+                </div>
+
+                {/* Chart */}
+                <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: "14px 10px 8px", marginBottom: 10 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: C.muted, padding: "0 6px", marginBottom: 6 }}>
+                    {activeChartEx} — {METRICS.find(m => m.key === metric)?.label} (kg)
+                  </div>
+                  {chartPts.length === 0 ? (
+                    <div style={{ padding: "28px 12px", textAlign: "center", color: C.faint, fontSize: 13 }}>No comparable kg sets logged for this one yet</div>
+                  ) : (
+                    <LineChart points={chartPts} unit="kg" sel={chartSel} onSel={setChartSel} />
+                  )}
+                </div>
+
+                {/* Stat tiles */}
+                {chartPts.length > 0 && (() => {
+                  const bE = bestE1rm(history, activeChartEx!);
+                  let bW: number | null = null;
+                  series.forEach(p => { if (p.top != null && (bW == null || p.top > bW)) bW = p.top; });
+                  const tiles = [
+                    { label: "Best est. 1RM", value: bE ? `${fmtKg(bE)}kg` : "—" },
+                    { label: "Best weight", value: bW ? `${fmtKg(bW)}kg` : "—" },
+                    { label: "Sessions", value: String(series.length) },
+                  ];
+                  return (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 6, marginBottom: 20 }}>
+                      {tiles.map(t => (
+                        <div key={t.label} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: "10px 12px" }}>
+                          <div style={{ fontSize: 10, color: C.muted, marginBottom: 4 }}>{t.label}</div>
+                          <div style={{ fontSize: 16, fontWeight: 600, color: C.text }}>{t.value}</div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+
+                {/* Session log */}
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: C.muted, marginBottom: 8 }}>SESSION LOG</div>
+                {[...history].reverse().map((h, ri) => {
+                  const d = new Date(h.date);
+                  const open = openSession === ri;
+                  const doneEx = h.ex.filter(e => e.sets.some(s => s.done));
+                  return (
+                    <div key={h.date + ri} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, marginBottom: 6, overflow: "hidden" }}>
+                      <div onClick={() => setOpenSession(open ? -1 : ri)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "11px 13px", cursor: "pointer" }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{h.day}</span>
+                        <span style={{ fontSize: 12, color: C.muted }}>{d.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
+                        <span style={{ fontSize: 11, color: C.faint, marginLeft: "auto" }}>
+                          {h.mins ? `${h.mins}min · ` : ""}{h.volume ? `${h.volume.toLocaleString()}kg · ` : ""}{doneEx.length} ex {open ? "▾" : "▸"}
+                        </span>
+                      </div>
+                      {open && (
+                        <div style={{ padding: "0 13px 11px", borderTop: `1px solid ${C.border}` }}>
+                          {doneEx.map((e, ei) => (
+                            <div key={ei} style={{ marginTop: 9 }}>
+                              <div style={{ fontSize: 12, fontWeight: 600, color: C.text }}>
+                                {e.n}{e.pb ? <span style={{ color: C.pb }}> 🏆{e.pb}kg</span> : null}{e.rpe ? <span style={{ color: C.muted }}> · RPE {e.rpe}</span> : null}
+                              </div>
+                              <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
+                                {e.sets.filter(s => s.done).map(s => `${s.r}×${s.w || "—"}`).join("  ")}
+                              </div>
+                              {e.note ? <div style={{ fontSize: 11, color: C.faint, marginTop: 2 }}>“{e.note}”</div> : null}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </>
+            )}
+
+            {/* Backup / restore */}
+            <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: C.muted }}>DATA</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={backup} style={{ flex: 1, fontSize: 12, color: C.muted, background: C.surface, border: `1px solid ${C.border2}`, borderRadius: 8, cursor: "pointer", fontFamily: "inherit", padding: "11px 0", fontWeight: 600 }}>copy backup</button>
+                <button onClick={() => setShowRestore(p => !p)} style={{ flex: 1, fontSize: 12, color: showRestore ? C.timer : C.muted, background: showRestore ? "rgba(56,189,248,0.1)" : C.surface, border: `1px solid ${showRestore ? C.timer + "60" : C.border2}`, borderRadius: 8, cursor: "pointer", fontFamily: "inherit", padding: "11px 0", fontWeight: 600 }}>restore</button>
+              </div>
+              {showRestore && (
+                <div style={{ background: C.surface2, borderRadius: 13, padding: 14, border: `1px solid rgba(56,189,248,0.15)` }}>
+                  <textarea value={restoreText} onChange={ev => setRestoreText(ev.target.value)} placeholder="Paste a backup here..." rows={3} style={{ width: "100%", background: C.surface3, border: `1px solid ${C.border2}`, borderRadius: 8, padding: "8px 10px", fontSize: 12, color: C.text, fontFamily: "inherit", outline: "none", resize: "none", boxSizing: "border-box", marginBottom: 8 }} />
+                  <button onClick={restore} disabled={!restoreText.trim()} style={{ width: "100%", padding: 11, borderRadius: 8, border: `1px solid ${C.timer}44`, background: "rgba(56,189,248,0.1)", color: restoreText.trim() ? C.timer : C.faint, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>restore backup</button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Timer */}
       {timerActive && (
