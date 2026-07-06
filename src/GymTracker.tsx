@@ -9,7 +9,7 @@ const CURRENT_BLOCK = 0;
 const CYCLE = 2;
 // Bump by 1 whenever DAYS below is edited (new weights, exercises, etc.) — phones only
 // rebuild the plan when this or CURRENT_BLOCK changes. PBs and history always carry over.
-const PLAN_VERSION = 2;
+const PLAN_VERSION = 3;
 
 type SetSpec = { s: number; r: number; w: string };
 type ExerciseDef = { n: string; b: SetSpec[]; rest: number; t: number };
@@ -33,7 +33,7 @@ const DAYS: DayDef[] = [
     name: "Push", sub: "SHOULDERS · CHEST · TRICEPS", emoji: "💪",
     color: "#ff6b6b", glow: "rgba(255,107,107,0.25)", grad: "linear-gradient(135deg, #ff6b6b, #ff8e53)", bg: "rgba(255,107,107,0.08)",
     ex: [
-      { n: "Barbell OHP",       b: [{s:4,r:10,w:"35kg"},{s:4,r:8,w:"37.5kg"},{s:4,r:6,w:"42.5kg"},{s:2,r:8,w:"32.5kg"}], rest:120, t:7 },
+      { n: "Barbell OHP",       b: [{s:4,r:10,w:"37.5kg"},{s:4,r:8,w:"37.5kg"},{s:4,r:6,w:"42.5kg"},{s:2,r:8,w:"32.5kg"}], rest:120, t:7 },
       { n: "Incline DB Press",  b: [{s:4,r:10,w:"20kg"},{s:4,r:8,w:"22.5kg"},{s:4,r:6,w:"25kg"},{s:2,r:8,w:"18kg"}], rest:105, t:7 },
       { n: "Pec Dec",           b: [{s:3,r:12,w:"Stack 7"},{s:3,r:10,w:"Stack 8"},{s:3,r:8,w:"Stack 9"},{s:2,r:10,w:"Stack 6"}], rest:75, t:7 },
       { n: "Lateral Raise DB",  b: [{s:3,r:15,w:"8kg"},{s:3,r:12,w:"9kg"},{s:3,r:10,w:"10kg"},{s:2,r:12,w:"7.5kg"}], rest:60, t:7 },
