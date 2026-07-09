@@ -9,7 +9,7 @@ const CURRENT_BLOCK = 0;
 const CYCLE = 2;
 // Bump by 1 whenever DAYS below is edited (new weights, exercises, etc.) — phones only
 // rebuild the plan when this or CURRENT_BLOCK changes. PBs and history always carry over.
-const PLAN_VERSION = 7;
+const PLAN_VERSION = 8;
 
 type SetSpec = { s: number; r: number; w: string };
 type ExerciseDef = { n: string; b: SetSpec[]; rest: number; t: number };
@@ -67,13 +67,12 @@ const DAYS: DayDef[] = [
     name: "Arms", sub: "BICEPS · TRICEPS · FOREARMS", emoji: "🦾",
     color: "#f9c74f", glow: "rgba(249,199,79,0.25)", grad: "linear-gradient(135deg, #f9c74f, #f3722c)", bg: "rgba(249,199,79,0.08)",
     ex: [
-      { n: "Close Grip Bench Press",     b: [{s:4,r:12,w:"50kg"},{s:4,r:10,w:"55kg"},{s:4,r:8,w:"60kg"},{s:2,r:10,w:"45kg"}], rest:90, t:7 },
-      { n: "Overhead Tricep Ext rope",   b: [{s:3,r:12,w:"Stack 6"},{s:3,r:10,w:"Stack 7"},{s:3,r:8,w:"Stack 8"},{s:2,r:10,w:"Stack 5"}], rest:75, t:7 },
-      { n: "Tricep Pushdown rope",       b: [{s:3,r:12,w:"Stack 6"},{s:3,r:10,w:"Stack 7"},{s:3,r:8,w:"Stack 8"},{s:2,r:10,w:"Stack 5"}], rest:60, t:7 },
-      { n: "Incline DB Curl",            b: [{s:3,r:12,w:"10kg"},{s:3,r:10,w:"12.5kg"},{s:3,r:8,w:"12.5kg"},{s:2,r:10,w:"9kg"}], rest:75, t:7 },
-      { n: "Preacher Curl",              b: [{s:3,r:12,w:"7.5kg/side"},{s:3,r:10,w:"8.75kg/side"},{s:3,r:8,w:"8.75kg/side"},{s:2,r:10,w:"6.25kg/side"}], rest:75, t:7 },
-      { n: "Hammer Curl",                b: [{s:3,r:12,w:"12.5kg"},{s:3,r:10,w:"15kg"},{s:3,r:8,w:"15kg"},{s:2,r:10,w:"10kg"}], rest:60, t:7 },
-      { n: "Bayesian Cable Curl",        b: [{s:3,r:12,w:"Calibrate"},{s:3,r:12,w:"Progress"},{s:3,r:10,w:"Heavy"},{s:2,r:12,w:"Light"}], rest:60, t:7 },
+      { n: "Close Grip Bench Press",     b: [{s:3,r:12,w:"50kg"},{s:4,r:10,w:"55kg"},{s:4,r:8,w:"60kg"},{s:2,r:10,w:"45kg"}], rest:180, t:7 },
+      { n: "Overhead Tricep Ext rope",   b: [{s:3,r:12,w:"Stack 6"},{s:3,r:10,w:"Stack 7"},{s:3,r:8,w:"Stack 8"},{s:2,r:10,w:"Stack 5"}], rest:90, t:7 },
+      { n: "Tricep Pushdown rope",       b: [{s:3,r:12,w:"Stack 6"},{s:3,r:10,w:"Stack 7"},{s:3,r:8,w:"Stack 8"},{s:2,r:10,w:"Stack 5"}], rest:90, t:7 },
+      { n: "Bayesian Cable Curl",        b: [{s:3,r:12,w:"10kg"},{s:3,r:12,w:"Progress"},{s:3,r:10,w:"Heavy"},{s:2,r:12,w:"Light"}], rest:90, t:7 },
+      { n: "Preacher Curl",              b: [{s:3,r:12,w:"7.5kg/side"},{s:3,r:10,w:"8.75kg/side"},{s:3,r:8,w:"8.75kg/side"},{s:2,r:10,w:"6.25kg/side"}], rest:90, t:7 },
+      { n: "Hammer Curl",                b: [{s:3,r:12,w:"12.5kg"},{s:3,r:10,w:"15kg"},{s:3,r:8,w:"15kg"},{s:2,r:10,w:"10kg"}], rest:90, t:7 },
     ]
   },
   {
