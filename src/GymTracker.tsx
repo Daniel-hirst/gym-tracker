@@ -9,7 +9,7 @@ const CURRENT_BLOCK = 0;
 const CYCLE = 2;
 // Bump by 1 whenever DAYS below is edited (new weights, exercises, etc.) — phones only
 // rebuild the plan when this or CURRENT_BLOCK changes. PBs and history always carry over.
-const PLAN_VERSION = 8;
+const PLAN_VERSION = 9;
 
 type SetSpec = { s: number; r: number; w: string };
 type ExerciseDef = { n: string; b: SetSpec[]; rest: number; t: number };
@@ -33,10 +33,10 @@ const DAYS: DayDef[] = [
     name: "Push", sub: "SHOULDERS · CHEST · TRICEPS", emoji: "💪",
     color: "#ff6b6b", glow: "rgba(255,107,107,0.25)", grad: "linear-gradient(135deg, #ff6b6b, #ff8e53)", bg: "rgba(255,107,107,0.08)",
     ex: [
-      { n: "Barbell OHP",       b: [{s:4,r:10,w:"30kg"},{s:4,r:8,w:"37.5kg"},{s:4,r:6,w:"42.5kg"},{s:2,r:8,w:"32.5kg"}], rest:120, t:7 },
-      { n: "Incline DB Press",  b: [{s:4,r:10,w:"20kg"},{s:4,r:8,w:"22.5kg"},{s:4,r:6,w:"25kg"},{s:2,r:8,w:"18kg"}], rest:105, t:7 },
+      { n: "Barbell OHP",       b: [{s:4,r:12,w:"30kg"},{s:4,r:8,w:"37.5kg"},{s:4,r:6,w:"42.5kg"},{s:2,r:8,w:"32.5kg"}], rest:120, t:7 },
+      { n: "Incline DB Press",  b: [{s:4,r:12,w:"20kg"},{s:4,r:8,w:"22.5kg"},{s:4,r:6,w:"25kg"},{s:2,r:8,w:"18kg"}], rest:105, t:7 },
       { n: "Pec Dec",           b: [{s:3,r:12,w:"Stack 7"},{s:3,r:10,w:"Stack 8"},{s:3,r:8,w:"Stack 9"},{s:2,r:10,w:"Stack 6"}], rest:75, t:7 },
-      { n: "Cable Lateral Raise", b: [{s:3,r:15,w:"Calibrate"},{s:3,r:12,w:"Progress"},{s:3,r:10,w:"Heavy"},{s:2,r:12,w:"Light"}], rest:60, t:7 },
+      { n: "Cable Lateral Raise", b: [{s:3,r:15,w:"5kg / Stack 1"},{s:3,r:12,w:"Progress"},{s:3,r:10,w:"Heavy"},{s:2,r:12,w:"Light"}], rest:60, t:7 },
       { n: "Face Pull cable",   b: [{s:3,r:15,w:"Light"},{s:3,r:15,w:"Light"},{s:3,r:15,w:"Light"},{s:2,r:15,w:"Light"}], rest:60, t:6 },
     ]
   },
@@ -44,11 +44,11 @@ const DAYS: DayDef[] = [
     name: "Pull", sub: "BACK · BICEPS · REAR DELTS", emoji: "🏋️",
     color: "#4ecdc4", glow: "rgba(78,205,196,0.25)", grad: "linear-gradient(135deg, #4ecdc4, #44a8c8)", bg: "rgba(78,205,196,0.08)",
     ex: [
-      { n: "Conventional Deadlift",  b: [{s:4,r:10,w:"90kg"},{s:4,r:5,w:"100kg"},{s:4,r:4,w:"107.5kg"},{s:2,r:4,w:"85kg"}], rest:150, t:7 },
+      { n: "Conventional Deadlift",  b: [{s:4,r:12,w:"80kg"},{s:4,r:5,w:"100kg"},{s:4,r:4,w:"107.5kg"},{s:2,r:4,w:"85kg"}], rest:150, t:7 },
       { n: "Barbell Bent Over Row",  b: [{s:4,r:10,w:"50kg"},{s:4,r:8,w:"55kg"},{s:4,r:6,w:"60kg"},{s:2,r:8,w:"45kg"}], rest:120, t:7 },
-      { n: "Pull Ups",               b: [{s:3,r:8,w:"Band"},{s:3,r:6,w:"BW"},{s:3,r:5,w:"Weighted"},{s:2,r:8,w:"Band"}], rest:90, t:7 },
-      { n: "Hammer Curl",            b: [{s:3,r:12,w:"12.5kg"},{s:3,r:10,w:"15kg"},{s:3,r:8,w:"15kg"},{s:2,r:10,w:"10kg"}], rest:75, t:7 },
-      { n: "Reverse Pec Dec",        b: [{s:3,r:15,w:"Calibrate"},{s:3,r:12,w:"Progress"},{s:3,r:10,w:"Heavy"},{s:2,r:12,w:"Light"}], rest:75, t:7 },
+      { n: "Pull Ups",               b: [{s:3,r:10,w:"Thicker band"},{s:3,r:6,w:"BW"},{s:3,r:5,w:"Weighted"},{s:2,r:8,w:"Band"}], rest:90, t:7 },
+      { n: "Hammer Curl",            b: [{s:3,r:12,w:"10-12.5kg"},{s:3,r:10,w:"15kg"},{s:3,r:8,w:"15kg"},{s:2,r:10,w:"10kg"}], rest:75, t:7 },
+      { n: "Reverse Pec Dec",        b: [{s:3,r:15,w:"Stack 3-4"},{s:3,r:12,w:"Progress"},{s:3,r:10,w:"Heavy"},{s:2,r:12,w:"Light"}], rest:75, t:7 },
     ]
   },
   {
@@ -68,8 +68,8 @@ const DAYS: DayDef[] = [
     color: "#f9c74f", glow: "rgba(249,199,79,0.25)", grad: "linear-gradient(135deg, #f9c74f, #f3722c)", bg: "rgba(249,199,79,0.08)",
     ex: [
       { n: "Close Grip Bench Press",     b: [{s:3,r:12,w:"50kg"},{s:4,r:10,w:"55kg"},{s:4,r:8,w:"60kg"},{s:2,r:10,w:"45kg"}], rest:180, t:7 },
-      { n: "Overhead Tricep Ext rope",   b: [{s:3,r:12,w:"Stack 6"},{s:3,r:10,w:"Stack 7"},{s:3,r:8,w:"Stack 8"},{s:2,r:10,w:"Stack 5"}], rest:90, t:7 },
-      { n: "Tricep Pushdown rope",       b: [{s:3,r:12,w:"Stack 6"},{s:3,r:10,w:"Stack 7"},{s:3,r:8,w:"Stack 8"},{s:2,r:10,w:"Stack 5"}], rest:90, t:7 },
+      { n: "Overhead Tricep Ext rope",   b: [{s:3,r:12,w:"Stack 5 / 25kg"},{s:3,r:10,w:"Stack 6"},{s:3,r:8,w:"Stack 7"},{s:2,r:10,w:"Stack 4"}], rest:90, t:7 },
+      { n: "Tricep Pushdown rope",       b: [{s:3,r:12,w:"Stack 4 / 20kg"},{s:3,r:10,w:"Stack 5"},{s:3,r:8,w:"Stack 6"},{s:2,r:10,w:"Stack 3"}], rest:90, t:7 },
       { n: "Bayesian Cable Curl",        b: [{s:3,r:12,w:"10kg"},{s:3,r:12,w:"Progress"},{s:3,r:10,w:"Heavy"},{s:2,r:12,w:"Light"}], rest:90, t:7 },
       { n: "Preacher Curl",              b: [{s:3,r:12,w:"7.5kg/side"},{s:3,r:10,w:"8.75kg/side"},{s:3,r:8,w:"8.75kg/side"},{s:2,r:10,w:"6.25kg/side"}], rest:90, t:7 },
       { n: "Hammer Curl",                b: [{s:3,r:12,w:"12.5kg"},{s:3,r:10,w:"15kg"},{s:3,r:8,w:"15kg"},{s:2,r:10,w:"10kg"}], rest:90, t:7 },
@@ -79,14 +79,13 @@ const DAYS: DayDef[] = [
     name: "Legs", sub: "LEGS · CORE", emoji: "🔥",
     color: "#f97316", glow: "rgba(249,115,22,0.25)", grad: "linear-gradient(135deg, #f97316, #ef4444)", bg: "rgba(249,115,22,0.08)",
     ex: [
-      { n: "Barbell Back Squat",   b: [{s:4,r:8,w:"65kg"},{s:4,r:6,w:"72.5kg"},{s:4,r:5,w:"80kg"},{s:2,r:6,w:"55kg"}], rest:150, t:7 },
-      { n: "Romanian Deadlift",    b: [{s:3,r:10,w:"65kg"},{s:3,r:8,w:"72.5kg"},{s:3,r:6,w:"80kg"},{s:2,r:8,w:"57.5kg"}], rest:120, t:7 },
+      { n: "Barbell Back Squat",   b: [{s:4,r:12,w:"65kg"},{s:4,r:6,w:"72.5kg"},{s:4,r:5,w:"80kg"},{s:2,r:6,w:"55kg"}], rest:150, t:7 },
+      { n: "Romanian Deadlift",    b: [{s:3,r:12,w:"65kg"},{s:3,r:8,w:"72.5kg"},{s:3,r:6,w:"80kg"},{s:2,r:8,w:"57.5kg"}], rest:120, t:7 },
       { n: "Leg Press",            b: [{s:3,r:12,w:"30kg/side"},{s:3,r:10,w:"35kg/side"},{s:3,r:8,w:"40kg/side"},{s:2,r:10,w:"25kg/side"}], rest:120, t:7 },
-      { n: "Hack Squat",           b: [{s:3,r:10,w:"Calibrate"},{s:3,r:10,w:"Progress"},{s:3,r:8,w:"Heavy"},{s:2,r:10,w:"Light"}], rest:90, t:7 },
+      { n: "Hack Squat",           b: [{s:3,r:12,w:"Calibrate"},{s:3,r:10,w:"Progress"},{s:3,r:8,w:"Heavy"},{s:2,r:10,w:"Light"}], rest:90, t:7 },
       { n: "Calf Raise",           b: [{s:3,r:15,w:"40kg/side"},{s:3,r:12,w:"45kg/side"},{s:3,r:10,w:"50kg/side"},{s:2,r:12,w:"32.5kg/side"}], rest:90, t:7 },
       { n: "Cable Crunch",         b: [{s:3,r:15,w:"65kg"},{s:3,r:12,w:"70kg"},{s:3,r:12,w:"75kg"},{s:2,r:12,w:"55kg"}], rest:60, t:7 },
       { n: "Hanging Leg Raise",    b: [{s:3,r:12,w:"BW"},{s:3,r:10,w:"BW"},{s:3,r:10,w:"BW"},{s:2,r:10,w:"BW"}], rest:60, t:7 },
-      { n: "Dumbbell Side Bend",   b: [{s:3,r:15,w:"20kg/side"},{s:3,r:15,w:"22.5kg/side"},{s:3,r:15,w:"25kg/side"},{s:2,r:15,w:"15kg/side"}], rest:60, t:7 },
       { n: "Pallof Press",         b: [{s:3,r:10,w:"17.5kg"},{s:3,r:10,w:"20kg"},{s:3,r:10,w:"22.5kg"},{s:2,r:10,w:"12.5kg"}], rest:60, t:7 },
     ]
   },
