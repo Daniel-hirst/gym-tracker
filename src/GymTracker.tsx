@@ -22,6 +22,7 @@ type WorkSet = { id: string; r: number; w: string; done: boolean; startW: string
 type Exercise = {
   id: string; n: string; sets: WorkSet[]; note: string;
   pb: number | null; rpe: number | null; target: number | null; rest: number; collapsed: boolean;
+  startRest?: number; // the plan's prescribed rest when this state was built (absent in pre-v11 saves)
 };
 type DayState = { startedAt: number | null; ex: Exercise[] };
 type HistorySet = { r: number; w: string; done: boolean };
@@ -99,7 +100,7 @@ function initState(blockIdx: number): DayState[] {
     startedAt: null,
     ex: d.ex.map(e => {
       const b = e.b[blockIdx];
-      return { id: uid(), n: e.n, sets: makeSets(b.s, b.r, b.w), note: "", pb: null, rpe: null, target: e.t, rest: e.rest || 90, collapsed: false };
+      return { id: uid(), n: e.n, sets: makeSets(b.s, b.r, b.w), note: "", pb: null, rpe: null, target: e.t, rest: e.rest || 90, startRest: e.rest || 90, collapsed: false };
     })
   }));
 }
@@ -118,7 +119,8 @@ const store = {
 
 // The programme lives in code (CURRENT_BLOCK / PLAN_VERSION above), so on load we compare
 // them against what the saved state was built from — if either changed, rebuild the plan
-// from DAYS and keep the PBs.
+// from DAYS and keep the PBs. In-app weight/rest edits also carry over, but only where the
+// plan's own prescription didn't change — a new prescription from the PT always wins.
 function loadState(): DayState[] {
   const saved = store.get<DayState[]>("gym-state");
   const savedBlock = store.get<number>("gym-block");
@@ -128,7 +130,16 @@ function loadState(): DayState[] {
   if (saved) {
     const pbs: Record<string, number> = {};
     saved.forEach(d => d.ex.forEach(e => { if (e.pb) pbs[e.n] = Math.max(pbs[e.n] || 0, e.pb); }));
-    ns.forEach(d => d.ex.forEach(e => { if (pbs[e.n]) e.pb = pbs[e.n]; }));
+    ns.forEach((d, di) => d.ex.forEach(e => {
+      if (pbs[e.n]) e.pb = pbs[e.n];
+      const old = saved[di]?.ex.find(o => o.n === e.n);
+      if (!old) return;
+      if (old.startRest != null && old.startRest === e.rest && old.rest !== old.startRest) e.rest = old.rest;
+      e.sets.forEach((set, si) => {
+        const os = old.sets[si];
+        if (os && os.startW === set.w && os.w !== os.startW) set.w = os.w;
+      });
+    }));
   }
   return ns;
 }
@@ -309,6 +320,7 @@ export default function GymTracker() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const flashRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const endRef = useRef<number | null>(null);
+  const activeRef = useRef<{ day: number; id: string } | null>(null); // which exercise the running timer belongs to
   const audioRef = useRef<AudioContext | null>(null);
   const pbTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toastRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -398,7 +410,23 @@ export default function GymTracker() {
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = null;
     if (flashRef.current) clearTimeout(flashRef.current);
-    endRef.current = null; setRestLeft(null); setIsFlashing(false);
+    endRef.current = null; activeRef.current = null; setRestLeft(null); setIsFlashing(false);
+  }
+
+  // Shift the countdown that's on screen right now (works from the "GO!" state too)
+  function bumpLiveTimer(d: number) {
+    if (endRef.current == null) return;
+    const leftMs = Math.max(0, endRef.current - Date.now());
+    const newLeftMs = Math.max(0, leftMs + d * 1000);
+    endRef.current = Date.now() + newLeftMs;
+    setRestTotal(t => Math.max(15, t + d));
+    setActiveExRest(r => Math.max(15, Math.min(300, r + d)));
+    if (newLeftMs > 0 && !timerRef.current) {
+      timerRef.current = setInterval(syncTimer, 250);
+      if (flashRef.current) clearTimeout(flashRef.current);
+      setIsFlashing(false);
+    }
+    syncTimer();
   }
 
   useEffect(() => () => {
@@ -457,6 +485,7 @@ export default function GymTracker() {
       }
       const r = e.rest || 90;
       setActiveExRest(r);
+      activeRef.current = { day: cur, id: e.id };
       startTimer(r);
     }
   }
@@ -468,7 +497,19 @@ export default function GymTracker() {
   // PBs now register when a set is ticked done (in togSet), not while typing
   function upSetW(ei: number, si: number, v: string) { update(s => { s[cur].ex[ei].sets[si].w = v; }); }
 
-  function adjExRest(ei: number, d: number) { update(s => { s[cur].ex[ei].rest = Math.max(15, Math.min(300, (s[cur].ex[ei].rest || 90) + d)); }); }
+  // Changing an exercise's rest also moves its live countdown, and vice versa from the timer bar
+  function adjExRest(ei: number, d: number) {
+    const from = exs[ei]?.rest || 90;
+    const applied = Math.max(15, Math.min(300, from + d)) - from;
+    if (!applied) return;
+    update(s => { s[cur].ex[ei].rest = Math.max(15, Math.min(300, (s[cur].ex[ei].rest || 90) + d)); });
+    if (activeRef.current && activeRef.current.day === cur && exs[ei]?.id === activeRef.current.id) bumpLiveTimer(applied);
+  }
+  function adjTimer(d: number) {
+    const a = activeRef.current;
+    const ei = a && a.day === cur ? exs.findIndex(e => e.id === a.id) : -1;
+    if (ei >= 0) adjExRest(ei, d); else bumpLiveTimer(d);
+  }
   function upRpe(ei: number, v: number) { update(s => { s[cur].ex[ei].rpe = s[cur].ex[ei].rpe === v ? null : v; }); }
   function toggleCollapse(ei: number) { update(s => { s[cur].ex[ei].collapsed = !s[cur].ex[ei].collapsed; }); }
   function addSet(ei: number) { update(s => { const sets = s[cur].ex[ei].sets; const last = sets[sets.length-1]; sets.push({ id: uid(), r: last?.r||10, w: last?.w||"", done: false, startW: last?.w||"" }); }); }
@@ -509,12 +550,12 @@ export default function GymTracker() {
       missing.forEach(p => {
         const b = p.b[CURRENT_BLOCK];
         const idx = Math.min(planned.indexOf(p), s[cur].ex.length);
-        s[cur].ex.splice(idx, 0, { id: uid(), n: p.n, sets: makeSets(b.s, b.r, b.w), note: "", pb: null, rpe: null, target: p.t, rest: p.rest || 90, collapsed: false });
+        s[cur].ex.splice(idx, 0, { id: uid(), n: p.n, sets: makeSets(b.s, b.r, b.w), note: "", pb: null, rpe: null, target: p.t, rest: p.rest || 90, startRest: p.rest || 90, collapsed: false });
       });
     });
     showToast(`Restored ${missing.length} exercise${missing.length > 1 ? "s" : ""} from the plan`);
   }
-  function addEx() { update(s => { s[cur].ex.push({ id: uid(), n: "New exercise", sets: makeSets(3,10,""), note: "", pb: null, rpe: null, target: null, rest: 90, collapsed: false }); }); }
+  function addEx() { update(s => { s[cur].ex.push({ id: uid(), n: "New exercise", sets: makeSets(3,10,""), note: "", pb: null, rpe: null, target: null, rest: 90, startRest: 90, collapsed: false }); }); }
   function resetDay() {
     if (!window.confirm("Reset this day?")) return;
     update(s => { s[cur].startedAt = null; s[cur].ex.forEach(e => { e.sets.forEach(set => { set.done = false; }); e.note = ""; e.collapsed = false; }); });
@@ -760,9 +801,9 @@ export default function GymTracker() {
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 6, background: C.surface2, borderRadius: 10, padding: "5px 8px" }}>
                       <span style={{ fontSize: 11, color: C.muted, fontWeight: 700, letterSpacing: "0.1em" }}>REST</span>
-                      <button onClick={() => adjExRest(j, -15)} style={{ width: 30, height: 30, borderRadius: 7, border: "none", background: C.surface3, color: C.text, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
+                      <button onClick={() => adjExRest(j, -15)} style={{ width: 38, height: 38, borderRadius: 9, border: "none", background: C.surface3, color: C.text, fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
                       <span style={{ fontSize: 14, fontWeight: 700, color: C.timer, minWidth: 38, textAlign: "center" }}>{fmt(e.rest || 90)}</span>
-                      <button onClick={() => adjExRest(j, 15)} style={{ width: 30, height: 30, borderRadius: 7, border: "none", background: C.surface3, color: C.text, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                      <button onClick={() => adjExRest(j, 15)} style={{ width: 38, height: 38, borderRadius: 9, border: "none", background: C.surface3, color: C.text, fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
                     </div>
                   </div>
 
@@ -1023,7 +1064,7 @@ export default function GymTracker() {
           <div style={{ height: 2, background: C.surface3 }}>
             <div style={{ height: "100%", width: timerBarPct + "%", background: restDone ? `linear-gradient(90deg, ${C.timerDone}, #fca5a5)` : `linear-gradient(90deg, ${C.timer}, #7dd3fc)`, transition: "width .9s linear" }} />
           </div>
-          <div style={{ background: restDone ? "rgba(248,113,113,0.08)" : C.surface, borderTop: `1px solid ${timerColor}22`, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ background: restDone ? "rgba(248,113,113,0.08)" : C.surface, borderTop: `1px solid ${timerColor}22`, padding: "12px 12px", display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ position: "relative", width: 48, height: 48, flexShrink: 0 }}>
               <svg width={48} height={48} style={{ transform: "rotate(-90deg)" }}>
                 <circle cx={24} cy={24} r={radius} fill="none" stroke={C.surface3} strokeWidth={3} />
@@ -1033,12 +1074,14 @@ export default function GymTracker() {
                 <span style={{ fontSize: restDone ? 11 : 14, fontWeight: 700, color: timerColor }}>{restDone ? "GO!" : fmt(restLeft ?? 0)}</span>
               </div>
             </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: timerColor }}>{restDone ? "Rest done — GO!" : "Resting..."}</div>
-              <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{restDone ? "Tap a set when ready" : `${fmt(restTotal)} target`}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: timerColor }}>{restDone ? "GO!" : "Resting..."}</div>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{restDone ? "Tap a set" : `${fmt(restTotal)} target`}</div>
             </div>
-            <button onClick={() => startTimer(activeExRest)} style={{ width: 44, height: 44, borderRadius: 11, border: `1px solid ${timerColor}44`, background: timerColor + "11", color: timerColor, fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>↺</button>
-            <button onClick={stopTimer} style={{ width: 44, height: 44, borderRadius: 11, border: `1px solid ${C.border2}`, background: "transparent", color: C.muted, fontSize: 17, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+            <button onClick={() => adjTimer(-15)} style={{ width: 42, height: 42, borderRadius: 11, border: `1px solid ${C.border2}`, background: "transparent", color: C.text, fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "inherit" }}>−15</button>
+            <button onClick={() => adjTimer(15)} style={{ width: 42, height: 42, borderRadius: 11, border: `1px solid ${C.border2}`, background: "transparent", color: C.text, fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "inherit" }}>+15</button>
+            <button onClick={() => startTimer(activeExRest)} style={{ width: 42, height: 42, borderRadius: 11, border: `1px solid ${timerColor}44`, background: timerColor + "11", color: timerColor, fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>↺</button>
+            <button onClick={stopTimer} style={{ width: 42, height: 42, borderRadius: 11, border: `1px solid ${C.border2}`, background: "transparent", color: C.muted, fontSize: 17, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
           </div>
         </div>
       )}
