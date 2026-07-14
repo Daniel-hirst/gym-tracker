@@ -9,7 +9,7 @@ const CURRENT_BLOCK = 0;
 const CYCLE = 2;
 // Bump by 1 whenever DAYS below is edited (new weights, exercises, etc.) — phones only
 // rebuild the plan when this or CURRENT_BLOCK changes. PBs and history always carry over.
-const PLAN_VERSION = 9;
+const PLAN_VERSION = 10;
 
 type SetSpec = { s: number; r: number; w: string };
 type ExerciseDef = { n: string; b: SetSpec[]; rest: number; t: number };
@@ -47,7 +47,7 @@ const DAYS: DayDef[] = [
       { n: "Conventional Deadlift",  b: [{s:4,r:12,w:"80kg"},{s:4,r:5,w:"100kg"},{s:4,r:4,w:"107.5kg"},{s:2,r:4,w:"85kg"}], rest:150, t:7 },
       { n: "Barbell Bent Over Row",  b: [{s:4,r:10,w:"50kg"},{s:4,r:8,w:"55kg"},{s:4,r:6,w:"60kg"},{s:2,r:8,w:"45kg"}], rest:120, t:7 },
       { n: "Pull Ups",               b: [{s:3,r:10,w:"Thicker band"},{s:3,r:6,w:"BW"},{s:3,r:5,w:"Weighted"},{s:2,r:8,w:"Band"}], rest:90, t:7 },
-      { n: "Hammer Curl",            b: [{s:3,r:12,w:"10-12.5kg"},{s:3,r:10,w:"15kg"},{s:3,r:8,w:"15kg"},{s:2,r:10,w:"10kg"}], rest:75, t:7 },
+      { n: "Hammer Curl (bench-braced)", b: [{s:3,r:12,w:"10-12.5kg/arm"},{s:3,r:10,w:"15kg"},{s:3,r:8,w:"15kg"},{s:2,r:10,w:"10kg"}], rest:75, t:7 },
       { n: "Reverse Pec Dec",        b: [{s:3,r:15,w:"Stack 3-4"},{s:3,r:12,w:"Progress"},{s:3,r:10,w:"Heavy"},{s:2,r:12,w:"Light"}], rest:75, t:7 },
     ]
   },
