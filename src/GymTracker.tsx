@@ -248,6 +248,11 @@ export function LineChart({ points, unit, sel, onSel, refLine }: { points: { dat
   const tipY = selP ? (tipAbove ? y(selP.v) - 44 : y(selP.v) + 12) : 0;
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", display: "block" }}>
+      <defs>
+        <filter id="pb-glow-blur" x="-100%" y="-100%" width="300%" height="300%">
+          <feGaussianBlur stdDeviation="3" />
+        </filter>
+      </defs>
       {niceTicks(lo, hi).map(t => (
         <g key={t}>
           <line x1={L} x2={W - R} y1={y(t)} y2={y(t)} stroke="rgba(255,255,255,0.07)" strokeWidth={1} />
@@ -261,11 +266,14 @@ export function LineChart({ points, unit, sel, onSel, refLine }: { points: { dat
         </g>
       )}
       <path d={path} fill="none" stroke={CHART_ACCENT} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+      {points.map((p, i) => i === maxI && points.length > 1 && (
+        <circle key={`pbglow${i}`} cx={x(i)} cy={y(p.v)} r={7} fill={C.pb} opacity={0.45} filter="url(#pb-glow-blur)" />
+      ))}
       {points.map((p, i) => (
-        <circle key={i} cx={x(i)} cy={y(p.v)} r={i === last ? 5 : 4} fill={CHART_ACCENT} stroke={C.surface} strokeWidth={2} />
+        <circle key={i} cx={x(i)} cy={y(p.v)} r={i === last ? 5 : 4} fill={i === maxI && points.length > 1 ? C.pb : CHART_ACCENT} stroke={C.surface} strokeWidth={2} />
       ))}
       {maxI !== last && points.length > 1 && (
-        <text x={x(maxI)} y={y(points[maxI].v) - 9} textAnchor="middle" fontSize={10} fill={C.muted} fontFamily="inherit">{fmtNum(points[maxI].v)}</text>
+        <text x={x(maxI)} y={y(points[maxI].v) - 9} textAnchor="middle" fontSize={10} fontWeight={700} fill={C.pb} fontFamily="inherit">🏆 {fmtNum(points[maxI].v)}</text>
       )}
       <text x={Math.min(x(last), W - R - 4)} y={y(points[last].v) - 9} textAnchor={x(last) > W - R - 30 ? "end" : "middle"} fontSize={10} fontWeight={700} fill={C.text} fontFamily="inherit">{fmtNum(points[last].v)}</text>
       <text x={L} y={H - 6} fontSize={9} fill={C.faint} fontFamily="inherit">{dt(points[0].date)}</text>
@@ -765,12 +773,12 @@ export default function GymTracker() {
             const isActive = i === cur;
             return (
               <div key={i} onClick={() => setCur(i)} style={{
-                padding: "10px 2px", fontSize: 12, fontWeight: 600, textAlign: "center", borderRadius: 10,
+                padding: "10px 2px", fontSize: 12, fontWeight: 700, textAlign: "center", borderRadius: 10,
                 cursor: "pointer", userSelect: "none",
-                background: isActive ? d.bg : allDone ? C.successBg : C.surface,
-                border: `1px solid ${isActive ? d.color + "60" : allDone ? C.success + "40" : C.border}`,
-                color: isActive ? d.color : allDone ? C.success : C.muted,
-                boxShadow: isActive ? `0 0 12px ${d.glow}` : "none",
+                background: isActive ? d.color : allDone ? C.successBg : C.surface,
+                border: `1px solid ${isActive ? d.color : allDone ? C.success + "40" : C.border}`,
+                color: isActive ? "#000" : allDone ? C.success : C.muted,
+                boxShadow: isActive ? `0 0 18px ${d.glow}` : "none",
                 transition: "all .2s",
               }}>
                 <div style={{ fontSize: 16, marginBottom: 3, filter: isActive || allDone ? "none" : "grayscale(1)", opacity: isActive || allDone ? 1 : 0.55 }}>{d.emoji}</div>
@@ -1053,8 +1061,10 @@ export default function GymTracker() {
                   const d = new Date(h.date);
                   const open = openSession === ri;
                   const doneEx = h.ex.filter(e => e.sets.some(s => s.done));
+                  const dayMeta = DAYS.find(dd => dd.name === h.day);
                   return (
                     <div key={h.date + ri} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, marginBottom: 6, overflow: "hidden" }}>
+                      {dayMeta && <div style={{ height: 2, background: dayMeta.grad, opacity: 0.8 }} />}
                       <div onClick={() => setOpenSession(open ? -1 : ri)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "11px 13px", cursor: "pointer" }}>
                         <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{h.day}</span>
                         <span style={{ fontSize: 12, color: C.muted }}>{d.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
