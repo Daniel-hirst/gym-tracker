@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-05",
+  "title": "Design System: Gym Tracker",
+  "extensions": {
+    "colorMeta": {
+      "timer-blue": { "role": "secondary", "displayName": "Timer Sky", "canonical": "#38bdf8" },
+      "success": { "role": "secondary", "displayName": "Success Mint", "canonical": "#34d399" },
+      "pb-gold": { "role": "secondary", "displayName": "PB Gold", "canonical": "#fbbf24" },
+      "day-push": { "role": "tertiary", "displayName": "Push Coral", "canonical": "#ff6b6b" },
+      "day-pull": { "role": "tertiary", "displayName": "Pull Teal", "canonical": "#4ecdc4" },
+      "day-upper": { "role": "tertiary", "displayName": "Upper Violet", "canonical": "#a78bfa" },
+      "day-arms": { "role": "tertiary", "displayName": "Arms Gold", "canonical": "#f9c74f" },
+      "day-legs": { "role": "tertiary", "displayName": "Legs Orange", "canonical": "#f97316" },
+      "void": { "role": "neutral", "displayName": "Void", "canonical": "#0c0e13" },
+      "surface": { "role": "neutral", "displayName": "Surface", "canonical": "#13161e" },
+      "surface-raised": { "role": "neutral", "displayName": "Surface Raised", "canonical": "#1a1e28" },
+      "surface-inset": { "role": "neutral", "displayName": "Surface Inset", "canonical": "#222736" },
+      "text": { "role": "neutral", "displayName": "Ink", "canonical": "#f0f2f7" },
+      "text-muted": { "role": "neutral", "displayName": "Muted", "canonical": "#7d8595" },
+      "text-faint": { "role": "neutral", "displayName": "Faint", "canonical": "#4d5666" },
+      "success-bright": { "role": "secondary", "displayName": "Success Mint (gradient end)", "canonical": "#6ee7b7" },
+      "pb-amber": { "role": "secondary", "displayName": "PB Gold (gradient end)", "canonical": "#f59e0b" },
+      "on-accent-ink": { "role": "neutral", "displayName": "On-Accent Ink", "canonical": "#000000" },
+      "timer-blue-soft": { "role": "secondary", "displayName": "Timer Sky (active gradient end)", "canonical": "#7dd3fc" },
+      "timer-red-soft": { "role": "secondary", "displayName": "Timer Sky (expired gradient end)", "canonical": "#fca5a5" },
+      "scrim": { "role": "neutral", "displayName": "Scrim", "canonical": "rgba(0,0,0,0.4)" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "The current day's name in the header — the single largest element on screen." },
+      "title": { "displayName": "Title", "purpose": "Progress screen title and the completion percentage." },
+      "body": { "displayName": "Body", "purpose": "Exercise names, set inputs, button copy." },
+      "label": { "displayName": "Label", "purpose": "Uppercase structural eyebrows: RPE, REST, DATA, SESSION LOG, etc." }
+    },
+    "shadows": [
+      { "name": "day-glow", "value": "0 4px 16px var(--day-glow-color)", "purpose": "Marks the active training day's identity behind the header." },
+      { "name": "success-glow", "value": "0 0 20px rgba(52,211,153,0.2)", "purpose": "A card that just completed." },
+      { "name": "pb-glow", "value": "0 0 20px rgba(251,191,36,0.2)", "purpose": "A card that just hit a personal best." },
+      { "name": "overlay-shadow", "value": "0 4px 20px rgba(0,0,0,0.4)", "purpose": "Floating toast/undo pills above the rest of the UI." }
+    ],
+    "motion": [
+      { "name": "pop-in", "value": "popIn .2s ease", "purpose": "New card/toast entrance: scale 0.92→1, fade in." },
+      { "name": "gentle-pulse", "value": "gentlePulse 1.4s ease-in-out infinite", "purpose": "Rest timer at zero, prompting the next set." },
+      { "name": "state-transition", "value": "all .2s (or .3s cubic-bezier(.4,0,.2,1) for card state)", "purpose": "Default easing for done/PB/active state changes." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button (Finish Session)",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Full-width success-tinted call to action that ends the session and saves it to history.",
+      "html": "<button class=\"ds-btn-primary\">✓ finish session — save to history</button>",
+      "css": ".ds-btn-primary { width: 100%; padding: 13px 0; border-radius: 12px; font-family: 'SF Pro Display', -apple-system, 'Helvetica Neue', sans-serif; font-size: 13px; font-weight: 600; border: 1px solid rgba(52,211,153,0.27); background: rgba(52,211,153,0.08); color: #34d399; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; } .ds-btn-primary:hover { opacity: 0.9; } .ds-btn-primary:active { opacity: 0.7; transform: scale(0.98); }"
+    },
+    {
+      "name": "Ghost Footer Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Low-emphasis utility action (reset / plates / progress) — the default for anything that isn't the primary action.",
+      "html": "<button class=\"ds-btn-ghost\">📈 progress</button>",
+      "css": ".ds-btn-ghost { font-size: 12px; font-weight: 600; color: #7d8595; background: transparent; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 12px; cursor: pointer; } .ds-btn-ghost:hover { color: #f0f2f7; border-color: rgba(255,255,255,0.2); } .ds-btn-ghost:focus-visible { outline: 2px solid #38bdf8; outline-offset: 2px; }"
+    },
+    {
+      "name": "Exercise Card",
+      "kind": "card",
+      "refersTo": "card-exercise",
+      "description": "The core content unit: one exercise with its rest/RPE controls and set rows. Flat at rest; gains a colored top-bar and glow when complete or a PB lands.",
+      "html": "<div class=\"ds-card-exercise\"><div class=\"ds-card-exercise__bar\"></div><div class=\"ds-card-exercise__title\">Barbell OHP</div></div>",
+      "css": ".ds-card-exercise { background: #13161e; border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 14px; } .ds-card-exercise__bar { height: 2px; border-radius: 2px; margin-bottom: 12px; background: linear-gradient(90deg, #ff6b6b, transparent); opacity: 0.8; } .ds-card-exercise__title { font-size: 16px; font-weight: 600; color: #f0f2f7; } .ds-card-exercise--done { background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.4); box-shadow: 0 0 20px rgba(52,211,153,0.2); }"
+    },
+    {
+      "name": "Day Tab Chip",
+      "kind": "chip",
+      "refersTo": "chip-day-tab",
+      "description": "One of five day selectors in the header grid. Active state fills with that day's own tinted background, colored border, and glow.",
+      "html": "<div class=\"ds-chip-day ds-chip-day--active\">💪<br/>Push</div>",
+      "css": ".ds-chip-day { padding: 10px 2px; font-size: 12px; font-weight: 600; text-align: center; border-radius: 10px; cursor: pointer; user-select: none; background: #13161e; border: 1px solid rgba(255,255,255,0.05); color: #7d8595; transition: all .2s; } .ds-chip-day--active { background: rgba(255,107,107,0.08); border-color: rgba(255,107,107,0.375); color: #ff6b6b; box-shadow: 0 0 12px rgba(255,107,107,0.25); }"
+    },
+    {
+      "name": "Set Complete Button",
+      "kind": "button",
+      "refersTo": "set-complete-button",
+      "description": "The 44×44px circular-ish tick that marks one set done; fills with a success gradient once ticked. Sized for one-handed, mid-set use.",
+      "html": "<button class=\"ds-set-complete ds-set-complete--done\">✓</button>",
+      "css": ".ds-set-complete { width: 44px; height: 44px; border-radius: 11px; cursor: pointer; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: #7d8595; font-size: 18px; font-weight: 700; display: flex; align-items: center; justify-content: center; transition: all .2s; } .ds-set-complete--done { border-color: rgba(52,211,153,0.5); background: linear-gradient(135deg, #34d399, #6ee7b7); color: #000; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Night Session",
+    "overview": "Gym Tracker is a dark HUD you check under gym lighting, not a bright productivity app you check at a desk. Its base state is deliberately quiet: near-black tiered surfaces, low-contrast hairline borders, muted grey text. Nothing glows, shadows, or announces itself until something has actually happened — a set ticked, a personal best broken, a rest timer counting down. That restraint is what makes the payoffs (a gold PB flash, a green completion glow, a day's own neon accent lighting its tab) read as earned rather than decorative.\n\nThe five training days each carry their own accent color and gradient — coral Push, teal Pull, violet Upper, gold Arms, orange Legs — so the app's identity shifts subtly day to day while the surrounding chrome (surfaces, type, spacing, radii) stays constant. This is a solo tool built for one person's own programme, not a market product, so its \"brand\" is really a mood: technical, low-light, unsentimental.\n\nExplicit anti-reference: this is not a corporate SaaS dashboard. No light backgrounds, no card-shadow-heavy admin-panel look, no blue-and-white enterprise palette. It is gym equipment, not office software.",
+    "keyCharacteristics": [
+      "Flat, tiered dark surfaces (void → surface → raised → inset) instead of card shadows",
+      "Per-day neon accent colors that own their day's tab, header glow, and card top-bar — never borrowed across days",
+      "State-triggered glow (success green, PB gold) as the only source of elevation drama",
+      "Small, uppercase, letter-spaced eyebrow labels (RPE, REST, DATA, SESSION LOG) as the recurring structural device",
+      "Single system font throughout; hierarchy comes from size/weight/tracking, not a second typeface"
+    ],
+    "rules": [
+      { "name": "The One Signal Rule", "body": "Success green means done, gold means PB, sky blue means an active timer. Never recolor one of these three for an unrelated purpose, and never let a day's accent color bleed into another day.", "section": "colors" },
+      { "name": "The Quiet-Until-It-Matters Rule", "body": "Surfaces and controls are flat and low-contrast at rest. Glow, gradient fills, and saturated color are reserved for a state change (done, PB, active countdown) — they are the reward, not the wallpaper.", "section": "colors" },
+      { "name": "The Eyebrow Rule", "body": "Any small structural label (not body copy) is uppercase, 10–11px, weight 700, with 0.08em+ tracking.", "section": "typography" },
+      { "name": "The Glow-Is-Earned Rule", "body": "A surface only glows in response to a real event (active day, just-completed, new PB, running timer). A glow on an idle surface is a bug, not a style choice.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep every day's accent color scoped to that day's own tab, header glow, and card top-bar — never borrow one day's color for another.",
+      "Do treat success green, PB gold, and timer blue as reserved semantic colors, not a general-purpose palette to pull from for new features.",
+      "Do use the uppercase/tracked label style (11px, 700, 0.1em) for any new structural/eyebrow text.",
+      "Do keep new surfaces flat at rest; add a glow only as a direct response to a state change.",
+      "Do keep the single system-font stack; do not introduce a second typeface for \"emphasis.\""
+    ],
+    "donts": [
+      "Don't add drop shadows to a resting card, tab, or panel — depth comes from the surface tier, not a shadow.",
+      "Don't push the interface toward a light/corporate-dashboard look (light backgrounds, card shadows, blue-and-white enterprise palette) — this is gym equipment, not office software.",
+      "Don't make controls smaller than the existing steppers/complete-buttons (~38–44px) — they're sized for one-handed, mid-set use, not desktop-precision pointing.",
+      "Don't add a second decorative font, icon set, or illustration style; the app's only \"graphics\" are emoji, SVG (chart + timer ring), and color itself."
+    ]
+  }
+}

@@ -326,6 +326,9 @@ export default function GymTracker() {
   const toastRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [undoDel, setUndoDel] = useState<{ ex: Exercise; day: number; idx: number } | null>(null);
   const undoRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [undoReset, setUndoReset] = useState<{ day: number; startedAt: number | null; ex: Exercise[] } | null>(null);
+  const undoResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{ title: string; message: string; confirmLabel: string; tone: "success" | "danger"; onConfirm: () => void } | null>(null);
   const [showProgress, setShowProgress] = useState(false);
   const [oneRms, setOneRms] = useState<Record<string, OneRm>>(() => {
     // Merge code-baked tests with in-app entries; the newer date wins per exercise
@@ -435,6 +438,7 @@ export default function GymTracker() {
     if (pbTimeoutRef.current) clearTimeout(pbTimeoutRef.current);
     if (toastRef.current) clearTimeout(toastRef.current);
     if (undoRef.current) clearTimeout(undoRef.current);
+    if (undoResetRef.current) clearTimeout(undoResetRef.current);
   }, []);
 
   // No-ops inside a claude.ai artifact; persists everything if hosted as a real site
@@ -556,10 +560,25 @@ export default function GymTracker() {
     showToast(`Restored ${missing.length} exercise${missing.length > 1 ? "s" : ""} from the plan`);
   }
   function addEx() { update(s => { s[cur].ex.push({ id: uid(), n: "New exercise", sets: makeSets(3,10,""), note: "", pb: null, rpe: null, target: null, rest: 90, startRest: 90, collapsed: false }); }); }
+  // Resets are soft, same as exercise deletes — the toast offers tap-to-undo instead of a blocking confirm
   function resetDay() {
-    if (!window.confirm("Reset this day?")) return;
+    setUndoReset({ day: cur, startedAt: state[cur].startedAt, ex: state[cur].ex.map(e => ({ ...e, sets: e.sets.map(s => ({ ...s })) })) });
+    if (undoResetRef.current) clearTimeout(undoResetRef.current);
+    undoResetRef.current = setTimeout(() => setUndoReset(null), 6000);
     update(s => { s[cur].startedAt = null; s[cur].ex.forEach(e => { e.sets.forEach(set => { set.done = false; }); e.note = ""; e.collapsed = false; }); });
     stopTimer();
+  }
+
+  function undoResetDay() {
+    if (!undoReset) return;
+    setState(s => {
+      const ns = s.slice();
+      ns[undoReset.day] = { startedAt: undoReset.startedAt, ex: undoReset.ex };
+      return ns;
+    });
+    setUndoReset(null);
+    if (undoResetRef.current) clearTimeout(undoResetRef.current);
+    showToast("Day restored 👍");
   }
   function showToast(msg: string) {
     setToast(msg);
@@ -569,7 +588,16 @@ export default function GymTracker() {
 
   function finishSession() {
     if (!exs.some(e => e.sets.some(s => s.done))) { showToast("Nothing ticked yet"); return; }
-    if (!window.confirm("Finish session? Saves it to history and clears the ticks.")) return;
+    setConfirmDialog({
+      title: "Finish session?",
+      message: "Saves it to history and clears today's ticks.",
+      confirmLabel: "Finish session",
+      tone: "success",
+      onConfirm: doFinishSession,
+    });
+  }
+
+  function doFinishSession() {
     const rec: HistoryEntry = {
       date: new Date().toISOString(), day: day.name, block: CURRENT_BLOCK,
       mins: sessionMins, volume: sessionVol || null,
@@ -578,6 +606,7 @@ export default function GymTracker() {
     setHistory(h => [...h, rec]);
     update(s => { s[cur].startedAt = null; s[cur].ex.forEach(e => { e.sets.forEach(set => { set.done = false; }); e.note = ""; e.collapsed = false; e.rpe = null; }); });
     stopTimer();
+    setConfirmDialog(null);
     showToast("Session saved to history 📒");
   }
 
@@ -590,13 +619,28 @@ export default function GymTracker() {
   }
 
   function restore() {
+    let d: { state: DayState[]; history?: HistoryEntry[] };
     try {
-      const d = JSON.parse(restoreText);
-      if (!d || !Array.isArray(d.state)) throw new Error("bad backup");
-      setState(d.state); setHistory(d.history ?? []);
-      setShowRestore(false); setRestoreText("");
-      showToast("Backup restored 💾");
-    } catch { showToast("Couldn't read that backup"); }
+      const parsed = JSON.parse(restoreText);
+      if (!parsed || !Array.isArray(parsed.state)) throw new Error("bad backup");
+      d = parsed;
+    } catch { showToast("Couldn't read that backup"); return; }
+    const incoming = d.history ?? [];
+    const latest = incoming.length ? new Date(incoming[incoming.length - 1].date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : null;
+    setConfirmDialog({
+      title: "Restore this backup?",
+      message: `This backup has ${incoming.length} session${incoming.length === 1 ? "" : "s"}${latest ? ` (latest ${latest})` : ""}. It will replace your current ${history.length} session${history.length === 1 ? "" : "s"} and any in-progress ticks.`,
+      confirmLabel: "Restore backup",
+      tone: "danger",
+      onConfirm: () => doRestore(d),
+    });
+  }
+
+  function doRestore(d: { state: DayState[]; history?: HistoryEntry[] }) {
+    setState(d.state); setHistory(d.history ?? []);
+    setShowRestore(false); setRestoreText("");
+    setConfirmDialog(null);
+    showToast("Backup restored 💾");
   }
 
   function saveRm() {
@@ -771,9 +815,8 @@ export default function GymTracker() {
                 })()}
                 {!isCollapsed && (() => { const lt = lastTime(e.n); return lt ? <div style={{ fontSize: 11, color: C.muted, marginBottom: 6 }}>↩ last: {lt.label} · {lt.date.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}{lt.next ? <span style={{ color: C.success, fontWeight: 700 }}> · try {lt.next}kg ↗</span> : null}</div> : null; })()}
 
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: isCollapsed ? 0 : 12 }}>
-                  <input value={e.n} onChange={ev => upN(j, ev.target.value)} onBlur={() => blurN(j)} style={{ flex: 1, fontSize: 16, fontWeight: 600, color: C.text, background: "transparent", border: "none", outline: "none", fontFamily: "inherit", padding: 0, lineHeight: 1.3 }} />
-                  {!isCollapsed && !allDone && <button onClick={() => delE(j)} style={{ background: "none", border: "none", color: C.muted, fontSize: 18, cursor: "pointer", padding: "8px 10px" }}>✕</button>}
+                <div style={{ marginBottom: isCollapsed ? 0 : 12 }}>
+                  <input value={e.n} onChange={ev => upN(j, ev.target.value)} onBlur={() => blurN(j)} style={{ width: "100%", fontSize: 16, fontWeight: 600, color: C.text, background: "transparent", border: "none", outline: "none", fontFamily: "inherit", padding: 0, lineHeight: 1.3, boxSizing: "border-box" }} />
                 </div>
 
                 {isCollapsed && (
@@ -1093,6 +1136,27 @@ export default function GymTracker() {
           <span style={{ color: C.muted }}>deleted “{undoDel.ex.n}”</span>
           <span style={{ color: C.timer, fontWeight: 700 }}>UNDO</span>
         </button>
+      )}
+
+      {undoReset && (
+        <button onClick={undoResetDay} style={{ position: "fixed", bottom: `calc(${(timerActive ? 96 : 20) + (toast ? 52 : 0) + (undoDel ? 52 : 0)}px + env(safe-area-inset-bottom))`, left: "50%", transform: "translateX(-50%)", background: C.surface2, border: `1px solid ${C.timer}66`, color: C.text, fontSize: 13, padding: "12px 18px", borderRadius: 100, cursor: "pointer", fontFamily: "inherit", fontWeight: 600, whiteSpace: "nowrap", zIndex: 1000, boxShadow: "0 4px 20px rgba(0,0,0,0.4)", display: "flex", alignItems: "center", gap: 8, animation: "popIn .2s ease" }}>
+          <span style={{ color: C.muted }}>day reset</span>
+          <span style={{ color: C.timer, fontWeight: 700 }}>UNDO</span>
+        </button>
+      )}
+
+      {/* Confirm sheet — replaces window.confirm() for finish-session and restore-backup, the two highest-stakes actions */}
+      {confirmDialog && (
+        <div onClick={() => setConfirmDialog(null)} style={{ position: "fixed", inset: 0, zIndex: 2000, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0 16px calc(20px + env(safe-area-inset-bottom))" }}>
+          <div onClick={ev => ev.stopPropagation()} style={{ width: "100%", maxWidth: 420, background: C.surface2, border: `1px solid ${C.border2}`, borderRadius: 16, padding: 18, animation: "popIn .2s ease", boxSizing: "border-box" }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 6 }}>{confirmDialog.title}</div>
+            <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.5, marginBottom: 16 }}>{confirmDialog.message}</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => setConfirmDialog(null)} style={{ flex: 1, padding: 12, borderRadius: 10, border: `1px solid ${C.border2}`, background: "transparent", color: C.muted, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+              <button onClick={confirmDialog.onConfirm} style={{ flex: 1, padding: 12, borderRadius: 10, border: `1px solid ${confirmDialog.tone === "danger" ? C.timerDone : C.success}66`, background: confirmDialog.tone === "danger" ? "rgba(248,113,113,0.1)" : "rgba(52,211,153,0.1)", color: confirmDialog.tone === "danger" ? C.timerDone : C.success, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>{confirmDialog.confirmLabel}</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
