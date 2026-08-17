@@ -9,7 +9,7 @@ const CURRENT_BLOCK = 1;
 const CYCLE = 2;
 // Bump by 1 whenever DAYS below is edited (new weights, exercises, etc.) — phones only
 // rebuild the plan when this or CURRENT_BLOCK changes. PBs and history always carry over.
-const PLAN_VERSION = 14;
+const PLAN_VERSION = 15;
 
 type SetSpec = { s: number; r: number; w: string };
 type ExerciseDef = { n: string; b: SetSpec[]; rest: number; t: number };
@@ -45,10 +45,10 @@ const DAYS: DayDef[] = [
     name: "Pull", sub: "BACK · BICEPS · REAR DELTS", emoji: "🏋️",
     color: "#4ecdc4", glow: "rgba(78,205,196,0.25)", grad: "linear-gradient(135deg, #4ecdc4, #44a8c8)", bg: "rgba(78,205,196,0.08)",
     ex: [
-      { n: "Conventional Deadlift",  b: [{s:4,r:12,w:"80kg"},{s:3,r:10,w:"85kg"},{s:4,r:4,w:"107.5kg"},{s:2,r:4,w:"85kg"}], rest:150, t:8 },
-      { n: "Barbell Bent Over Row",  b: [{s:4,r:10,w:"50kg"},{s:3,r:10,w:"50kg"},{s:4,r:6,w:"60kg"},{s:2,r:8,w:"45kg"}], rest:120, t:8 },
+      { n: "Conventional Deadlift",  b: [{s:4,r:12,w:"80kg"},{s:3,r:10,w:"90kg"},{s:4,r:4,w:"107.5kg"},{s:2,r:4,w:"85kg"}], rest:150, t:8 },
+      { n: "Barbell Bent Over Row",  b: [{s:4,r:10,w:"50kg"},{s:3,r:10,w:"52.5kg"},{s:4,r:6,w:"60kg"},{s:2,r:8,w:"45kg"}], rest:120, t:8 },
       { n: "Pull Ups",               b: [{s:3,r:10,w:"Thicker band"},{s:3,r:10,w:"Thin Red Band"},{s:3,r:5,w:"Weighted"},{s:2,r:8,w:"Band"}], rest:90, t:8 },
-      { n: "Hammer Curl (standing)", b: [{s:3,r:12,w:"10kg"},{s:3,r:12,w:"12.5kg"},{s:3,r:8,w:"15kg"},{s:2,r:10,w:"10kg"}], rest:75, t:8 },
+      { n: "Hammer Curl (standing)", b: [{s:3,r:12,w:"10kg"},{s:3,r:14,w:"12.5kg"},{s:3,r:8,w:"15kg"},{s:2,r:10,w:"10kg"}], rest:75, t:8 },
       { n: "Reverse Pec Dec",        b: [{s:3,r:15,w:"Stack 3"},{s:3,r:15,w:"Stack 4"},{s:3,r:10,w:"Heavy"},{s:2,r:12,w:"Light"}], rest:75, t:8 },
     ]
   },
@@ -69,11 +69,11 @@ const DAYS: DayDef[] = [
     color: "#f9c74f", glow: "rgba(249,199,79,0.25)", grad: "linear-gradient(135deg, #f9c74f, #f3722c)", bg: "rgba(249,199,79,0.08)",
     ex: [
       { n: "Close Grip Bench Press",     b: [{s:3,r:12,w:"52.5kg"},{s:3,r:10,w:"57.5kg"},{s:4,r:8,w:"60kg"},{s:2,r:10,w:"45kg"}], rest:180, t:8 },
-      { n: "Overhead Tricep Ext rope",   b: [{s:3,r:12,w:"Stack 6"},{s:3,r:10,w:"Stack 8"},{s:3,r:8,w:"Stack 8"},{s:2,r:10,w:"Stack 5"}], rest:90, t:8 },
+      { n: "Overhead Tricep Ext rope",   b: [{s:3,r:12,w:"Stack 6"},{s:3,r:10,w:"Stack 7"},{s:3,r:8,w:"Stack 8"},{s:2,r:10,w:"Stack 5"}], rest:90, t:8 },
       { n: "Tricep Pushdown rope",       b: [{s:3,r:12,w:"Stack 4 / 20kg"},{s:3,r:10,w:"Stack 7"},{s:3,r:8,w:"Stack 6"},{s:2,r:10,w:"Stack 3"}], rest:90, t:8 },
       { n: "Bayesian Cable Curl",        b: [{s:3,r:12,w:"10kg"},{s:3,r:10,w:"20kg"},{s:3,r:10,w:"Heavy"},{s:2,r:12,w:"Light"}], rest:90, t:8 },
       { n: "Preacher Curl",              b: [{s:3,r:12,w:"10kg/side"},{s:3,r:12,w:"10kg/side"},{s:3,r:8,w:"11.25kg/side"},{s:2,r:10,w:"8.75kg/side"}], rest:90, t:8 },
-      { n: "Hammer Curl",                b: [{s:3,r:12,w:"12.5kg"},{s:3,r:14,w:"12.5kg"},{s:3,r:8,w:"15kg"},{s:2,r:10,w:"10kg"}], rest:90, t:8 },
+      { n: "Hammer Curl",                b: [{s:3,r:12,w:"12.5kg"},{s:3,r:12,w:"15kg"},{s:3,r:8,w:"15kg"},{s:2,r:10,w:"10kg"}], rest:90, t:8 },
     ]
   },
   {
