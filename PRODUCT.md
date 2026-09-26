@@ -22,7 +22,7 @@ Not a market product — personal software built to fit Dan's specific periodise
 
 - Used standing at the gym, mid-set, often one-handed — interactions need to be fast and forgiving, not desk-app precise.
 - Installed to the iPhone home screen as a PWA; a network-first service worker (`public/sw.js`) forces fresh HTML per launch and provides full offline fallback.
-- Weekly update ritual: Dan pastes a new programme from his "Claude PT" chat; an agent edits `DAYS`/`PLAN_VERSION`/`CURRENT_BLOCK` (and optionally `TESTED_1RMS`) in `src/GymTracker.tsx`, then deploys via `npm run deploy` (builds and force-pushes `dist/` to `gh-pages`).
+- Weekly update ritual: Dan pastes a new programme from his "Claude PT" chat; an agent edits `DAYS`/`CURRENT_BLOCK` (and optionally `TESTED_1RMS`) in `src/plan.ts`, then pushes to `main`; a GitHub Actions workflow builds and publishes to `gh-pages`.
 - No backend: all state, history, and PBs live in the phone's `localStorage`. JSON export/import is the only backup/transfer path.
 - iPhone home-screen caching is aggressive; a `build <timestamp>` footer stamp exists specifically so staleness after a deploy is diagnosable.
 
@@ -30,7 +30,7 @@ Not a market product — personal software built to fit Dan's specific periodise
 
 - 5-day training split (Push, Pull, Upper, Arms, Legs) across periodised blocks (Block 1 → 2 → 3 → Deload).
 - Set ticking, rest timers tuned per exercise, mid-session weight/rep edits, RPE + notes per exercise, automatic PB detection, session history (duration, volume, sets), safe-delete with tap-to-undo, "restore from plan" recovery.
-- Single source of truth for the plan is the `DAYS` array in `src/GymTracker.tsx`. Bumping `PLAN_VERSION` rebuilds the plan (keeps PBs/history, resets ticks/notes) — a deliberate boundary, not a bug.
+- Single source of truth for the plan is the `DAYS` array in `src/plan.ts`. Any prescription change rebuilds the plan on the phone (`PLAN_VERSION` is a hash of the prescriptions): PBs, history and unchanged in-app edits are kept, unfinished ticked days are archived to history, and ticks/notes reset — a deliberate boundary, not a bug.
 - No backend, no accounts today. Multi-user (others running their own independent copy) is an explicitly open future option, not yet designed for.
 - Tech is fixed by the existing codebase: React 18 + TypeScript (strict) + Vite 6, no other runtime dependencies, inline styling, deployed to GitHub Pages.
 

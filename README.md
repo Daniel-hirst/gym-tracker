@@ -7,7 +7,7 @@ A mobile-first workout tracker built with React + Vite. Follows a 5-day training
 ## Features
 
 - **5-day split** — Push, Pull, Upper, Arms and Legs days, each with a pre-built exercise plan
-- **Training blocks** — Block 1 → 2 → 3 → Deload, with sets, reps and weights that progress per block. The active block is set by the `CURRENT_BLOCK` constant at the top of [src/GymTracker.tsx](src/GymTracker.tsx) — change it and redeploy to move to the next block (PBs carry over, ticks reset)
+- **Training blocks** — Block 1 → 2 → 3 → Deload, with sets, reps and weights that progress per block. The programme and active block (`CURRENT_BLOCK`) live in [src/plan.ts](src/plan.ts) — edit it and push to move to the next block (PBs and unchanged in-app edits carry over; any unfinished ticked session is saved to history first)
 - **Set tracking** — tick sets off as you go, adjust weights and reps mid-session
 - **Rest timer** — automatic countdown after each completed set, tuned per exercise
 - **PB detection** — flags a personal best when you tick off a heavier top set
@@ -36,13 +36,12 @@ npm run dev -- --host
 
 ## Deploying
 
-The app deploys to GitHub Pages from the `gh-pages` branch:
+Pushing to `main` deploys automatically: [.github/workflows/deploy.yml](.github/workflows/deploy.yml) runs `npm run build` (type check, unit tests, Vite build) and publishes `dist/` to the `gh-pages` branch, which GitHub Pages serves.
 
 ```bash
-npm run deploy
+npm run build && git push
 ```
-
-This builds the app and force-pushes the `dist/` output to `gh-pages`. The Vite `base` is set to `/gym-tracker/` in [vite.config.js](vite.config.js) to match the Pages URL.
+ The Vite `base` is set to `/gym-tracker/` in [vite.config.js](vite.config.js) to match the Pages URL.
 
 ## Tech
 

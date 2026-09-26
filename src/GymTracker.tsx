@@ -1,150 +1,23 @@
 import { useState, useEffect, useRef, type ReactNode } from "react";
-
-// Block index: 0=B1, 1=B2, 2=B3, 3=Deload
-const BLOCKS = ["Block 1", "Block 2", "Block 3", "Deload"];
-
-// ═══ EDIT THESE when the programme changes, then redeploy with `npm run deploy` ═══
-// 0 = Block 1, 1 = Block 2, 2 = Block 3, 3 = Deload
-const CURRENT_BLOCK = 2;
-const CYCLE = 2;
-// Bump by 1 whenever DAYS below is edited (new weights, exercises, etc.) — phones only
-// rebuild the plan when this or CURRENT_BLOCK changes. PBs and history always carry over.
-const PLAN_VERSION = 17;
-
-type SetSpec = { s: number; r: number; w: string };
-type ExerciseDef = { n: string; b: SetSpec[]; rest: number; t: number };
-type DayDef = {
-  name: string; sub: string; emoji: string;
-  color: string; glow: string; grad: string; bg: string;
-  ex: ExerciseDef[];
-};
-type WorkSet = { id: string; r: number; w: string; done: boolean; startW: string };
-type Exercise = {
-  id: string; n: string; sets: WorkSet[]; note: string;
-  pb: number | null; rpe: number | null; target: number | null; rest: number; collapsed: boolean;
-  startRest?: number; // the plan's prescribed rest when this state was built (absent in pre-v11 saves)
-};
-type DayState = { startedAt: number | null; ex: Exercise[] };
-type HistorySet = { r: number; w: string; done: boolean };
-type HistoryExercise = { n: string; rpe: number | null; note: string; pb: number | null; sets: HistorySet[] };
-type HistoryEntry = { date: string; day: string; block: number; mins: number | null; volume: number | null; ex: HistoryExercise[] };
-
-const DAYS: DayDef[] = [
-  {
-    name: "Push", sub: "SHOULDERS · CHEST · TRICEPS", emoji: "💪",
-    color: "#ff6b6b", glow: "rgba(255,107,107,0.25)", grad: "linear-gradient(135deg, #ff6b6b, #ff8e53)", bg: "rgba(255,107,107,0.08)",
-    ex: [
-      { n: "Barbell OHP",       b: [{s:4,r:12,w:"30kg"},{s:4,r:10,w:"37.5kg"},{s:4,r:6,w:"40kg"},{s:2,r:8,w:"32.5kg"}], rest:120, t:9 },
-      { n: "Incline DB Press",  b: [{s:4,r:12,w:"17.5kg"},{s:4,r:10,w:"22.5kg"},{s:4,r:6,w:"27.5kg"},{s:2,r:8,w:"18kg"}], rest:105, t:9 },
-      { n: "Pec Dec",           b: [{s:3,r:12,w:"Stack 7"},{s:3,r:12,w:"Stack 7"},{s:3,r:10,w:"Stack 8"},{s:2,r:10,w:"Stack 6"}], rest:75, t:8 },
-      { n: "Cable Lateral Raise", b: [{s:3,r:15,w:"5kg / Stack 1"},{s:3,r:15,w:"5kg / Stack 1"},{s:3,r:15,w:"5kg / Stack 1"},{s:2,r:12,w:"Light"}], rest:60, t:8 },
-      { n: "Face Pull cable",   b: [{s:3,r:15,w:"Light"},{s:3,r:15,w:"Light"},{s:3,r:15,w:"Stack 6-7"},{s:2,r:15,w:"Light"}], rest:60, t:8 },
-      { n: "Calf Raise",        b: [{s:3,r:15,w:"40kg/side"},{s:3,r:15,w:"42.5kg/side"},{s:3,r:15,w:"42.5kg/side"},{s:2,r:12,w:"32.5kg/side"}], rest:90, t:8 },
-    ]
-  },
-  {
-    name: "Pull", sub: "BACK · BICEPS · REAR DELTS", emoji: "🏋️",
-    color: "#4ecdc4", glow: "rgba(78,205,196,0.25)", grad: "linear-gradient(135deg, #4ecdc4, #44a8c8)", bg: "rgba(78,205,196,0.08)",
-    ex: [
-      { n: "Conventional Deadlift",  b: [{s:4,r:12,w:"80kg"},{s:3,r:10,w:"90kg"},{s:3,r:6,w:"97.5kg"},{s:2,r:4,w:"85kg"}], rest:150, t:9 },
-      { n: "Barbell Bent Over Row",  b: [{s:4,r:10,w:"50kg"},{s:3,r:10,w:"52.5kg"},{s:3,r:6,w:"57.5kg"},{s:2,r:8,w:"45kg"}], rest:120, t:9 },
-      { n: "Pull Ups",               b: [{s:3,r:10,w:"Thicker band"},{s:3,r:10,w:"Thin Red Band"},{s:3,r:6,w:"Thin Red Band"},{s:2,r:8,w:"Band"}], rest:90, t:9 },
-      { n: "Hammer Curl (standing)", b: [{s:3,r:12,w:"10kg"},{s:3,r:14,w:"12.5kg"},{s:3,r:14,w:"15kg"},{s:2,r:10,w:"10kg"}], rest:75, t:8 },
-      { n: "Reverse Pec Dec",        b: [{s:3,r:15,w:"Stack 3"},{s:3,r:15,w:"Stack 4"},{s:3,r:15,w:"Stack 4"},{s:2,r:12,w:"Light"}], rest:75, t:8 },
-      { n: "Cable Crunch",           b: [{s:3,r:15,w:"65kg"},{s:3,r:15,w:"65kg"},{s:3,r:15,w:"65kg"},{s:2,r:12,w:"55kg"}], rest:60, t:8 },
-    ]
-  },
-  {
-    name: "Upper", sub: "HYPERTROPHY VOLUME", emoji: "🔷",
-    color: "#a78bfa", glow: "rgba(167,139,250,0.25)", grad: "linear-gradient(135deg, #a78bfa, #7c3aed)", bg: "rgba(167,139,250,0.08)",
-    ex: [
-      { n: "Machine Chest Press",   b: [{s:3,r:12,w:"17.5kg"},{s:3,r:10,w:"22.5kg"},{s:3,r:6,w:"25kg"},{s:2,r:10,w:"Light"}], rest:105, t:9 },
-      { n: "Chest Supported Row",   b: [{s:3,r:12,w:"Calibrate"},{s:3,r:10,w:"27.5kg/side"},{s:3,r:6,w:"30kg/side"},{s:2,r:10,w:"Light"}], rest:90, t:9 },
-      { n: "Pec Dec",               b: [{s:3,r:15,w:"Stack 6"},{s:3,r:12,w:"Stack 7"},{s:3,r:10,w:"Stack 8"},{s:2,r:12,w:"Stack 5"}], rest:75, t:8 },
-      { n: "Single Arm Pulldown",   b: [{s:3,r:12,w:"15kg / Stack 3"},{s:3,r:10,w:"27.5kg / Stack 6"},{s:3,r:6,w:"30kg / Stack 7"},{s:2,r:10,w:"Light"}], rest:75, t:9 },
-      { n: "Cable Lateral Raise",   b: [{s:3,r:15,w:"5kg / Stack 1"},{s:3,r:15,w:"5kg / Stack 1"},{s:3,r:15,w:"5kg / Stack 1"},{s:2,r:12,w:"Light"}], rest:60, t:8 },
-      { n: "Face Pull cable",       b: [{s:3,r:15,w:"Light"},{s:3,r:15,w:"Light"},{s:3,r:15,w:"Stack 6-7"},{s:2,r:15,w:"Light"}], rest:60, t:8 },
-    ]
-  },
-  {
-    name: "Arms", sub: "BICEPS · TRICEPS · FOREARMS", emoji: "🦾",
-    color: "#f9c74f", glow: "rgba(249,199,79,0.25)", grad: "linear-gradient(135deg, #f9c74f, #f3722c)", bg: "rgba(249,199,79,0.08)",
-    ex: [
-      { n: "Close Grip Bench Press",     b: [{s:3,r:12,w:"52.5kg"},{s:3,r:10,w:"57.5kg"},{s:3,r:6,w:"62.5kg"},{s:2,r:10,w:"45kg"}], rest:180, t:9 },
-      { n: "Overhead Tricep Ext rope",   b: [{s:3,r:12,w:"Stack 6"},{s:3,r:10,w:"Stack 7"},{s:3,r:8,w:"Stack 8"},{s:2,r:10,w:"Stack 5"}], rest:90, t:9 },
-      { n: "Tricep Pushdown rope",       b: [{s:3,r:12,w:"Stack 4 / 20kg"},{s:3,r:10,w:"Stack 7"},{s:3,r:10,w:"Stack 7"},{s:2,r:10,w:"Stack 3"}], rest:90, t:8 },
-      { n: "Bayesian Cable Curl",        b: [{s:3,r:12,w:"10kg"},{s:3,r:10,w:"20kg"},{s:3,r:10,w:"20kg"},{s:2,r:12,w:"Light"}], rest:90, t:8 },
-      { n: "Preacher Curl",              b: [{s:3,r:12,w:"10kg/side"},{s:3,r:12,w:"10kg/side"},{s:3,r:12,w:"10kg/side"},{s:2,r:10,w:"8.75kg/side"}], rest:90, t:8 },
-      { n: "Hammer Curl",                b: [{s:3,r:12,w:"12.5kg"},{s:3,r:12,w:"15kg"},{s:3,r:12,w:"15kg"},{s:2,r:10,w:"10kg"}], rest:90, t:8 },
-      { n: "Pallof Press",               b: [{s:3,r:10,w:"15kg"},{s:3,r:10,w:"20kg"},{s:3,r:10,w:"25kg"},{s:2,r:10,w:"12.5kg"}], rest:60, t:8 },
-    ]
-  },
-  {
-    name: "Legs", sub: "LEGS · CORE", emoji: "🔥",
-    color: "#f97316", glow: "rgba(249,115,22,0.25)", grad: "linear-gradient(135deg, #f97316, #ef4444)", bg: "rgba(249,115,22,0.08)",
-    ex: [
-      { n: "Barbell Back Squat",   b: [{s:4,r:12,w:"60kg"},{s:4,r:10,w:"65kg"},{s:4,r:6,w:"70kg"},{s:2,r:6,w:"55kg"}], rest:150, t:9 },
-      { n: "Romanian Deadlift",    b: [{s:3,r:12,w:"60kg"},{s:3,r:10,w:"65kg"},{s:3,r:6,w:"70kg"},{s:2,r:8,w:"57.5kg"}], rest:120, t:9 },
-      { n: "Leg Press",            b: [{s:3,r:12,w:"30kg/side"},{s:3,r:10,w:"27.5kg/side"},{s:3,r:10,w:"30kg/side"},{s:2,r:10,w:"25kg/side"}], rest:120, t:8 },
-      { n: "Hack Squat",           b: [{s:3,r:12,w:"15kg/side"},{s:3,r:10,w:"17.5kg/side"},{s:3,r:10,w:"20kg/side"},{s:2,r:10,w:"Light"}], rest:90, t:8 },
-      { n: "Calf Raise",           b: [{s:3,r:15,w:"40kg/side"},{s:3,r:15,w:"42.5kg/side"},{s:3,r:15,w:"42.5kg/side"},{s:2,r:12,w:"32.5kg/side"}], rest:90, t:8 },
-      { n: "Cable Crunch",         b: [{s:3,r:15,w:"65kg"},{s:3,r:15,w:"65kg"},{s:3,r:15,w:"65kg"},{s:2,r:12,w:"55kg"}], rest:60, t:8 },
-      { n: "Hanging Leg Raise",    b: [{s:3,r:12,w:"BW"},{s:3,r:12,w:"BW"},{s:3,r:12,w:"BW"},{s:2,r:10,w:"BW"}], rest:60, t:8 },
-      { n: "Pallof Press",         b: [{s:3,r:10,w:"15kg"},{s:3,r:10,w:"20kg"},{s:3,r:10,w:"25kg"},{s:2,r:10,w:"12.5kg"}], rest:60, t:8 },
-    ]
-  },
-];
-
-function uid(): string { return (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`; }
-function makeSets(count: number, r: number, w: string): WorkSet[] { return Array(count).fill(null).map(() => ({ id: uid(), r, w, done: false, startW: w })); }
-
-function initState(blockIdx: number): DayState[] {
-  return DAYS.map(d => ({
-    startedAt: null,
-    ex: d.ex.map(e => {
-      const b = e.b[blockIdx];
-      return { id: uid(), n: e.n, sets: makeSets(b.s, b.r, b.w), note: "", pb: null, rpe: null, target: e.t, rest: e.rest || 90, startRest: e.rest || 90, collapsed: false };
-    })
-  }));
-}
+import { BLOCKS, CURRENT_BLOCK, CYCLE, DAYS, PLAN_VERSION, TESTED_1RMS } from "./plan";
+import {
+  type DayState, type Exercise, type HistoryEntry, type WorkSet,
+  isKgWeight, parseWeight, planExercise, plateBreakdown, rebuildState, rmKey,
+  sessionMinutes, sessionVolume, toHistoryEntry, uid, makeSets,
+} from "./logic";
 
 function fmt(s: number): string { return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; }
-function parseWeight(w: string): number | null { const m = String(w || "").match(/[\d.]+/); return m ? parseFloat(m[0]) : null; }
-// Only treat plain kg values as PB-able — "Stack 7", "Band", "40kg/side" etc. are not comparable weights
-function isKgWeight(w: string): boolean { return /^\s*\d+(\.\d+)?\s*(kg)?\s*$/i.test(String(w || "")); }
 
-// localStorage is blocked inside claude.ai artifacts (sandboxed iframe) — this no-ops there,
-// but persists automatically if the app is ever hosted for real.
+// localStorage can throw (private mode, storage blocked) — treat that as "nothing saved"
 const store = {
   get<T>(k: string): T | null { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) as T : null; } catch { return null; } },
   set(k: string, v: unknown) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
 };
 
-// The programme lives in code (CURRENT_BLOCK / PLAN_VERSION above), so on load we compare
-// them against what the saved state was built from — if either changed, rebuild the plan
-// from DAYS and keep the PBs. In-app weight/rest edits also carry over, but only where the
-// plan's own prescription didn't change — a new prescription from the PT always wins.
-function loadState(): DayState[] {
-  const saved = store.get<DayState[]>("gym-state");
-  const savedBlock = store.get<number>("gym-block");
-  const savedVersion = store.get<number>("gym-plan-version");
-  if (saved && savedBlock === CURRENT_BLOCK && savedVersion === PLAN_VERSION) return saved;
-  const ns = initState(CURRENT_BLOCK);
-  if (saved) {
-    const pbs: Record<string, number> = {};
-    saved.forEach(d => d.ex.forEach(e => { if (e.pb) pbs[e.n] = Math.max(pbs[e.n] || 0, e.pb); }));
-    ns.forEach((d, di) => d.ex.forEach(e => {
-      if (pbs[e.n]) e.pb = pbs[e.n];
-      const old = saved[di]?.ex.find(o => o.n === e.n);
-      if (!old) return;
-      if (old.startRest != null && old.startRest === e.rest && old.rest !== old.startRest) e.rest = old.rest;
-      e.sets.forEach((set, si) => {
-        const os = old.sets[si];
-        if (os && os.startW === set.w && os.w !== os.startW) set.w = os.w;
-      });
-    }));
-  }
-  return ns;
+// Read once at startup; rebuildState decides whether the plan changed since the last launch
+function loadInitial() {
+  const r = rebuildState(store.get<DayState[]>("gym-state"), store.get<number>("gym-block"), store.get<number>("gym-plan-version"), DAYS, CURRENT_BLOCK, PLAN_VERSION);
+  return { ...r, history: [...(store.get<HistoryEntry[]>("gym-history") ?? []), ...r.archived] };
 }
 
 const C = {
@@ -158,15 +31,6 @@ const C = {
 
 const RPE_COLORS = ["","","","","#34d399","#34d399","#34d399","#fbbf24","#fb923c","#f87171","#f87171"];
 
-// Tested 1RMs baked in from PT sessions (kg). Newer in-app entries (progress
-// screen) override these; keys are exercise names as they appear in DAYS.
-const TESTED_1RMS: Record<string, { w: number; date: string }> = {
-  "Conventional Deadlift": { w: 125, date: "2026-07-03" },
-  "Barbell Back Squat":    { w: 90,   date: "2026-07-03" },
-  "Bench Press":           { w: 77.5, date: "2026-07-03" }, // not in the current plan; kept for future programmes
-  "Barbell OHP":           { w: 55,   date: "2026-07-03" },
-};
-
 type OneRm = { w: number; date: string };
 
 // Warm-up ramp for barbell lifts: empty bar, then rounded % steps up to the work weight
@@ -179,7 +43,6 @@ function warmupRamp(target: number, bar = 20): { w: number; r: number }[] {
   });
   return out;
 }
-function rmKey(name: string): string { return name.trim().toLowerCase(); }
 function getOneRm(oneRms: Record<string, OneRm>, name: string): OneRm | null { return oneRms[rmKey(name)] ?? null; }
 
 // ── Progress charts / estimated 1RM ──────────────────────────────────────────
@@ -314,8 +177,9 @@ const CSS = `
 
 export default function GymTracker() {
   const [cur, setCur] = useState(0);
-  const [state, setState] = useState<DayState[]>(loadState);
-  const [history, setHistory] = useState<HistoryEntry[]>(() => store.get<HistoryEntry[]>("gym-history") ?? []);
+  const [initial] = useState(loadInitial);
+  const [state, setState] = useState<DayState[]>(initial.state);
+  const [history, setHistory] = useState<HistoryEntry[]>(initial.history);
   const [showRestore, setShowRestore] = useState(false);
   const [restoreText, setRestoreText] = useState("");
   const [copied, setCopied] = useState(false);
@@ -361,13 +225,8 @@ export default function GymTracker() {
   const missingFromPlan = day.ex.filter(p => !exs.some(e => e.n.trim().toLowerCase() === p.n.trim().toLowerCase())).length;
   const doneTotal = exs.filter(e => e.sets.every(s => s.done)).length;
   const pct = exs.length ? Math.round((doneTotal / exs.length) * 100) : 0;
-  const startedAt = state[cur].startedAt;
-  // Volume only counts sets with a real kg weight — machine stacks / bands / bodyweight aren't comparable
-  const sessionVol = Math.round(exs.reduce((t, e) => t + e.sets.reduce((a, s) => {
-    const w = parseWeight(s.w);
-    return a + (s.done && w && /kg/i.test(s.w || "") ? w * s.r : 0);
-  }, 0), 0));
-  const sessionMins = startedAt ? Math.max(1, Math.round((Date.now() - startedAt) / 60000)) : null;
+  const sessionVol = sessionVolume(state[cur]);
+  const sessionMins = sessionMinutes(state[cur]);
   const restDone = restLeft === 0;
   const timerActive = restLeft !== null;
 
@@ -452,11 +311,31 @@ export default function GymTracker() {
     if (undoResetRef.current) clearTimeout(undoResetRef.current);
   }, []);
 
-  // No-ops inside a claude.ai artifact; persists everything if hosted as a real site
   useEffect(() => { store.set("gym-state", state); }, [state]);
   useEffect(() => { store.set("gym-block", CURRENT_BLOCK); store.set("gym-plan-version", PLAN_VERSION); }, []);
   useEffect(() => { store.set("gym-1rms", oneRms); }, [oneRms]);
   useEffect(() => { store.set("gym-history", history); }, [history]);
+  useEffect(() => {
+    const n = initial.archived.length;
+    if (n) showToast(`Plan updated — saved ${n} unfinished session${n > 1 ? "s" : ""} to history 📒`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Keep the screen on while a session is in progress, so the rest timer can still beep
+  // (a locked iPhone suspends the page). Released once every day is finished or reset.
+  const sessionLive = state.some(d => d.startedAt != null);
+  useEffect(() => {
+    if (!sessionLive || !("wakeLock" in navigator)) return;
+    let lock: WakeLockSentinel | null = null;
+    let cancelled = false;
+    const acquire = () => {
+      if (document.visibilityState !== "visible") return;
+      navigator.wakeLock.request("screen").then(l => { if (cancelled) l.release(); else lock = l; }).catch(() => {});
+    };
+    acquire();
+    document.addEventListener("visibilitychange", acquire); // iOS drops the lock when the app is backgrounded
+    return () => { cancelled = true; document.removeEventListener("visibilitychange", acquire); lock?.release().catch(() => {}); };
+  }, [sessionLive]);
 
   useEffect(() => {
     const onVis = () => { if (document.visibilityState === "visible") syncTimer(); };
@@ -481,12 +360,21 @@ export default function GymTracker() {
     update(s => {
       if (nowDone && !s[cur].startedAt) s[cur].startedAt = stamp;
       const ex = s[cur].ex[ei];
-      ex.sets[si].done = nowDone;
-      if (nowDone && ex.sets.every(st => st.done)) ex.collapsed = true;
+      const st = ex.sets[si];
+      st.done = nowDone;
+      st.doneAt = nowDone ? stamp : undefined;
+      if (nowDone && ex.sets.every(x => x.done)) ex.collapsed = true;
       if (!nowDone) ex.collapsed = false;
+      const w = parseWeight(st.w);
       if (nowDone) {
-        const w = parseWeight(ex.sets[si].w);
-        if (isKgWeight(ex.sets[si].w) && w && (!ex.pb || w > ex.pb)) ex.pb = w;
+        // Remember the PB this set beat, so unticking it (e.g. a mistyped "400") undoes the PB
+        const raises = !!w && isKgWeight(st.w) && (!ex.pb || w > ex.pb);
+        st.pbBefore = raises ? ex.pb : undefined;
+        if (raises) ex.pb = w;
+      } else if (st.pbBefore !== undefined && ex.pb === w) {
+        const others = ex.sets.filter(x => x.done && isKgWeight(x.w)).map(x => parseWeight(x.w) || 0);
+        ex.pb = Math.max(st.pbBefore ?? 0, ...others) || null;
+        st.pbBefore = undefined;
       }
     });
     // Side effects stay outside the setState updater (it can run twice under StrictMode)
@@ -563,9 +451,8 @@ export default function GymTracker() {
     if (!missing.length) return;
     update(s => {
       missing.forEach(p => {
-        const b = p.b[CURRENT_BLOCK];
         const idx = Math.min(planned.indexOf(p), s[cur].ex.length);
-        s[cur].ex.splice(idx, 0, { id: uid(), n: p.n, sets: makeSets(b.s, b.r, b.w), note: "", pb: null, rpe: null, target: p.t, rest: p.rest || 90, startRest: p.rest || 90, collapsed: false });
+        s[cur].ex.splice(idx, 0, planExercise(p, CURRENT_BLOCK));
       });
     });
     showToast(`Restored ${missing.length} exercise${missing.length > 1 ? "s" : ""} from the plan`);
@@ -609,11 +496,7 @@ export default function GymTracker() {
   }
 
   function doFinishSession() {
-    const rec: HistoryEntry = {
-      date: new Date().toISOString(), day: day.name, block: CURRENT_BLOCK,
-      mins: sessionMins, volume: sessionVol || null,
-      ex: exs.map(e => ({ n: e.n, rpe: e.rpe, note: e.note, pb: e.pb, sets: e.sets.map(s => ({ r: s.r, w: s.w, done: s.done })) })),
-    };
+    const rec = toHistoryEntry(day.name, state[cur], CURRENT_BLOCK, new Date());
     setHistory(h => [...h, rec]);
     update(s => { s[cur].startedAt = null; s[cur].ex.forEach(e => { e.sets.forEach(set => { set.done = false; }); e.note = ""; e.collapsed = false; e.rpe = null; }); });
     stopTimer();
@@ -621,7 +504,7 @@ export default function GymTracker() {
     showToast("Session saved to history 📒");
   }
 
-  // In an artifact, refreshing loses everything — backup/restore via clipboard is the lifeline
+  // Manual safety net: the backup JSON goes wherever Dan pastes it
   function backup() {
     const data = JSON.stringify({ v: 1, block: CURRENT_BLOCK, state, history });
     navigator.clipboard.writeText(data)
@@ -672,7 +555,7 @@ export default function GymTracker() {
   // all sets done last time at RPE ≤ 7 (or unrecorded) → suggest a small bump on the top weight
   function lastTime(name: string) {
     for (let i = history.length - 1; i >= 0; i--) {
-      const m = history[i].ex.find(x => x.n === name && x.sets.some(s => s.done));
+      const m = history[i].ex.find(x => rmKey(x.n) === rmKey(name) && x.sets.some(s => s.done));
       if (!m) continue;
       const done = m.sets.filter(s => s.done);
       let top: { w: number; raw: string; r: number } | null = null;
@@ -928,14 +811,9 @@ export default function GymTracker() {
           </div>
 
           {showPlateCalc && (() => {
-            const PLATES = [25, 20, 15, 10, 5, 2.5, 1.25];
             const target = parseFloat(plateTarget);
-            const plates: { kg: number; count: number }[] = [];
-            if (!isNaN(target) && target > barWeight) {
-              let rem = (target - barWeight) / 2;
-              for (const p of PLATES) { const c = Math.floor(rem / p); if (c > 0) { plates.push({ kg: p, count: c }); rem = Math.round((rem - c * p) * 1000) / 1000; } }
-            }
-            const isValid = !isNaN(target) && target > barWeight;
+            const plan = plateBreakdown(target, barWeight);
+            const short = plan ? Math.round((target - plan.loaded) * 1000) / 1000 : 0;
             return (
               <div style={{ background: C.surface2, borderRadius: 13, padding: 14, border: `1px solid rgba(56,189,248,0.15)` }}>
                 <div style={{ fontSize: 11, color: C.timer, fontWeight: 700, letterSpacing: "0.1em", marginBottom: 10 }}>PLATE CALCULATOR</div>
@@ -953,17 +831,18 @@ export default function GymTracker() {
                     <input type="number" value={plateTarget} onChange={ev => setPlateTarget(ev.target.value)} placeholder="e.g. 80" style={{ width: "100%", background: C.surface3, border: `1px solid ${C.border2}`, borderRadius: 8, padding: "6px 10px", fontSize: 14, fontWeight: 700, color: C.text, fontFamily: "inherit", outline: "none", boxSizing: "border-box" }} />
                   </div>
                 </div>
-                {isValid && plates.length > 0 && (
+                {plan && plan.plates.length > 0 && (
                   <div>
                     <div style={{ fontSize: 11, color: C.muted, marginBottom: 8, fontWeight: 600, letterSpacing: "0.06em" }}>EACH SIDE</div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
-                      {plates.map((p, i) => (
+                      {plan.plates.map((p, i) => (
                         <div key={i} style={{ background: C.surface, borderRadius: 9, padding: "6px 12px", border: `1px solid ${C.border2}` }}>
                           <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{p.count > 1 ? `${p.count}×` : ""}{p.kg}kg</span>
                         </div>
                       ))}
                     </div>
-                    <div style={{ fontSize: 11, color: C.muted }}>{barWeight}kg bar + {(target-barWeight)/2}kg each side = {target}kg</div>
+                    <div style={{ fontSize: 11, color: C.muted }}>{barWeight}kg bar + {plan.perSide}kg each side = {plan.loaded}kg</div>
+                    {short > 0 && <div style={{ fontSize: 11, color: C.pb, marginTop: 4 }}>{target}kg can't be loaded exactly — closest is {plan.loaded}kg ({short}kg under)</div>}
                   </div>
                 )}
                 {!plateTarget && <div style={{ fontSize: 13, color: C.muted }}>Enter a total weight to see plate breakdown</div>}

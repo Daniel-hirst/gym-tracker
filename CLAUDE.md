@@ -10,22 +10,26 @@ here and expects the app updated.
 
 When Dan pastes a new week/programme:
 
-1. Edit the `DAYS` array at the top of `src/GymTracker.tsx` — it holds every day's
-   exercises with per-block prescriptions (`b` = [Block 1, Block 2, Block 3, Deload],
-   each `{s: sets, r: reps, w: weight string}`; `rest` in seconds; `t` = target RPE).
+1. Edit the `DAYS` array in `src/plan.ts` — it holds every day's exercises with
+   per-block prescriptions (`b` = [Block 1, Block 2, Block 3, Deload], each
+   `{s: sets, r: reps, w: weight string}`; `rest` in seconds; `t` = target RPE).
    There is also a `CYCLE` constant shown in the header and session exports — bump it
    when the PT starts a new cycle.
-2. Bump `PLAN_VERSION` by 1 (same file, just above `DAYS`) — phones only rebuild the
-   plan when it or `CURRENT_BLOCK` changes. Rebuilding keeps PBs and history but resets
-   ticks, notes and any in-app weight edits, so it should happen at week boundaries.
+2. There is no version to bump: `PLAN_VERSION` is a hash of the prescriptions, so any
+   change to names/sets/reps/weights/rest/RPE rebuilds the plan on his phone. Rebuilding
+   keeps PBs, history and in-app edits the PT didn't override, saves any unfinished
+   ticked day to history, and resets ticks and notes.
 3. If he's moving to a new block, also change `CURRENT_BLOCK` (0=Block 1, 1=Block 2,
    2=Block 3, 3=Deload).
 3b. If he reports tested 1RMs, add/update them in the `TESTED_1RMS` map (same file,
    keyed by exercise name, with the test date). Newer dates win over in-app entries.
-   No PLAN_VERSION bump needed for 1RM-only changes.
-4. Deploy with `npm run deploy` (runs the type check, builds, force-pushes `dist/` to
-   the `gh-pages` branch). Commit and push the source change to `main` too. Do the
-   whole chain in ONE command — Dan values speed.
+   1RM-only changes don't trigger a plan rebuild.
+4. Deploy by pushing to `main` — the GitHub Actions workflow (`.github/workflows/deploy.yml`)
+   builds and publishes to `gh-pages`. One command:
+   `npm run build && git commit -am "..." && git push`
+   (the local build is the fast gate: type check + unit tests + Vite build). Do NOT push
+   to `gh-pages` yourself — a second push cancels the workflow's Pages build and emails
+   Dan a failure. Dan values speed.
 5. Verify the live page in the BACKGROUND (Monitor watching for the new bundle
    filename) and tell him it's deployed straight away — only follow up if the
    deploy actually fails. Never block the reply on Pages, which can take 10+ min.
@@ -33,8 +37,10 @@ When Dan pastes a new week/programme:
 ## Commands
 
 - `npm run dev -- --host` — dev server reachable from his phone on home Wi-Fi
-- `npm run build` — `tsc --noEmit` then `vite build`
-- `npm run deploy` — build + publish to GitHub Pages
+- `npm run build` — `tsc --noEmit`, `vitest run`, then `vite build`
+- `npm test` — unit tests in watch mode (`src/logic.test.ts` covers plan rebuild/carry-over,
+  session archiving, session length and the plate calculator)
+- Deploying = pushing to `main` (see step 4)
 
 ## Gotchas
 
