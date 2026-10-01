@@ -653,7 +653,7 @@ export default function GymTracker() {
         </div>
 
         {/* Day tabs */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 5, padding: "0 16px 16px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(${DAYS.length},1fr)`, gap: 5, padding: "0 16px 16px" }}>
           {DAYS.map((d, i) => {
             const allDone = state[i].ex.length > 0 && state[i].ex.every(e => e.sets.every(s => s.done));
             const isActive = i === cur;

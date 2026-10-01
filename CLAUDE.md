@@ -14,7 +14,8 @@ When Dan pastes a new week/programme:
    per-block prescriptions (`b` = [Block 1, Block 2, Block 3, Deload], each
    `{s: sets, r: reps, w: weight string}`; `rest` in seconds; `t` = target RPE).
    There is also a `CYCLE` constant shown in the header and session exports — bump it
-   when the PT starts a new cycle.
+   when the PT starts a new cycle. Add new days at the END of `DAYS` and don't reorder
+   or delete days — saved phone state is matched to days by position.
 2. There is no version to bump: `PLAN_VERSION` is a hash of the prescriptions, so any
    change to names/sets/reps/weights/rest/RPE rebuilds the plan on his phone. Rebuilding
    keeps PBs, history and in-app edits the PT didn't override, saves any unfinished
