@@ -45,12 +45,12 @@ export const DAYS: DayDef[] = [
     name: "Upper", sub: "HYPERTROPHY VOLUME", emoji: "🔷",
     color: "#a78bfa", glow: "rgba(167,139,250,0.25)", grad: "linear-gradient(135deg, #a78bfa, #7c3aed)", bg: "rgba(167,139,250,0.08)",
     ex: [
-      { n: "Machine Chest Press", b: [{s:3,r:12,w:"17.5kg"},{s:3,r:10,w:"22.5kg"},{s:3,r:10,w:"Calibrate"},{s:2,r:10,w:"Light"}], rest:105, t:9 },
-      { n: "Chest Supported Row", b: [{s:3,r:12,w:"Calibrate"},{s:3,r:10,w:"27.5kg/side"},{s:3,r:10,w:"Calibrate"},{s:2,r:10,w:"Light"}], rest:90, t:9 },
-      { n: "Pec Dec", b: [{s:3,r:15,w:"Stack 6"},{s:3,r:12,w:"Stack 7"},{s:3,r:12,w:"30kg"},{s:2,r:12,w:"Stack 5"}], rest:75, t:8 },
-      { n: "Single Arm Pulldown", b: [{s:3,r:12,w:"15kg / Stack 3"},{s:3,r:10,w:"27.5kg / Stack 6"},{s:3,r:10,w:"Calibrate"},{s:2,r:10,w:"Light"}], rest:75, t:9 },
-      { n: "Machine Lateral Raise", b: [{s:3,r:15,w:"5kg / Stack 1"},{s:3,r:15,w:"5kg / Stack 1"},{s:3,r:15,w:"15kg"},{s:2,r:12,w:"Light"}], rest:60, t:8 },
-      { n: "Face Pull cable", b: [{s:3,r:15,w:"Light"},{s:3,r:15,w:"Light"},{s:3,r:15,w:"25kg"},{s:2,r:15,w:"Light"}], rest:60, t:8 },
+      { n: "Machine Chest Press", b: [{s:3,r:12,w:"17.5kg"},{s:3,r:10,w:"22.5kg"},{s:3,r:10,w:"Calibrate"},{s:2,r:10,w:"Light"}], rest:105, t:7 },
+      { n: "Chest Supported Row", b: [{s:3,r:12,w:"Calibrate"},{s:3,r:10,w:"27.5kg/side"},{s:3,r:10,w:"Calibrate"},{s:2,r:10,w:"Light"}], rest:90, t:7 },
+      { n: "Pec Dec", b: [{s:3,r:15,w:"Stack 6"},{s:3,r:12,w:"Stack 7"},{s:3,r:12,w:"Up one increment"},{s:2,r:12,w:"Stack 5"}], rest:75, t:7 },
+      { n: "Single Arm Pulldown", b: [{s:3,r:12,w:"15kg / Stack 3"},{s:3,r:10,w:"27.5kg / Stack 6"},{s:3,r:10,w:"Calibrate"},{s:2,r:10,w:"Light"}], rest:75, t:7 },
+      { n: "Machine Lateral Raise", b: [{s:3,r:15,w:"5kg / Stack 1"},{s:3,r:15,w:"5kg / Stack 1"},{s:3,r:15,w:"Up one increment"},{s:2,r:12,w:"Light"}], rest:60, t:7 },
+      { n: "Pallof Press", b: [{s:3,r:10,w:"15kg"},{s:3,r:10,w:"20kg"},{s:3,r:10,w:"10kg/side"},{s:2,r:10,w:"12.5kg"}], rest:60, t:7 },
     ]
   },
   {
@@ -62,19 +62,17 @@ export const DAYS: DayDef[] = [
       { n: "Preacher Curl", b: [{s:3,r:12,w:"10kg/side"},{s:3,r:12,w:"10kg/side"},{s:3,r:12,w:"15kg"},{s:2,r:10,w:"8.75kg/side"}], rest:90, t:7 },
       { n: "Bayesian Cable Curl", b: [{s:3,r:12,w:"10kg"},{s:3,r:10,w:"20kg"},{s:3,r:10,w:"5-7.5kg"},{s:2,r:12,w:"Light"}], rest:90, t:7 },
       { n: "Hammer Curl", b: [{s:3,r:12,w:"12.5kg"},{s:3,r:12,w:"15kg"},{s:3,r:12,w:"10kg"},{s:2,r:10,w:"10kg"}], rest:90, t:7 },
-      { n: "Pallof Press", b: [{s:3,r:10,w:"15kg"},{s:3,r:10,w:"20kg"},{s:3,r:10,w:"10kg/side"},{s:2,r:10,w:"12.5kg"}], rest:60, t:7 },
+      { n: "Crunch machine", b: [{s:3,r:15,w:"25kg"},{s:3,r:15,w:"25kg"},{s:3,r:15,w:"25kg"},{s:2,r:12,w:"25kg"}], rest:60, t:7 },
     ]
   },
   {
-    name: "Legs", sub: "LEGS · CORE", emoji: "🔥",
+    name: "Legs", sub: "LEGS", emoji: "🔥",
     color: "#f97316", glow: "rgba(249,115,22,0.25)", grad: "linear-gradient(135deg, #f97316, #ef4444)", bg: "rgba(249,115,22,0.08)",
     ex: [
       { n: "Leg Press", b: [{s:3,r:12,w:"30kg/side"},{s:3,r:10,w:"27.5kg/side"},{s:3,r:12,w:"Calibrate"},{s:2,r:10,w:"25kg/side"}], rest:120, t:7 },
       { n: "Romanian Deadlift", b: [{s:3,r:12,w:"60kg"},{s:3,r:10,w:"65kg"},{s:3,r:10,w:"45-50kg"},{s:2,r:8,w:"45kg"}], rest:120, t:7 },
       { n: "Leg Extension", b: [{s:3,r:15,w:"Calibrate"},{s:3,r:15,w:"Calibrate"},{s:3,r:15,w:"Calibrate"},{s:2,r:12,w:"Calibrate"}], rest:75, t:7 },
       { n: "Single Leg Kickback", b: [{s:3,r:15,w:"Calibrate /side"},{s:3,r:15,w:"Calibrate /side"},{s:3,r:15,w:"Calibrate /side"},{s:2,r:12,w:"Calibrate /side"}], rest:75, t:7 },
-      { n: "Crunch machine", b: [{s:3,r:15,w:"25kg"},{s:3,r:15,w:"25kg"},{s:3,r:15,w:"25kg"},{s:2,r:12,w:"25kg"}], rest:60, t:7 },
-      { n: "Captain's Chair Leg Raise", b: [{s:3,r:12,w:"BW"},{s:3,r:12,w:"BW"},{s:3,r:12,w:"BW"},{s:2,r:10,w:"BW"}], rest:60, t:7 },
     ]
   },
   {
