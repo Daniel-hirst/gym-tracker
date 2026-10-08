@@ -75,17 +75,6 @@ export const DAYS: DayDef[] = [
       { n: "Single Leg Kickback", b: [{s:3,r:15,w:"Calibrate /side"},{s:3,r:15,w:"Calibrate /side"},{s:3,r:15,w:"Calibrate /side"},{s:2,r:12,w:"Calibrate /side"}], rest:75, t:7 },
     ]
   },
-  {
-    name: "Core", sub: "MAT CORE · OPTIONAL", emoji: "🧘",
-    color: "#f472b6", glow: "rgba(244,114,182,0.25)", grad: "linear-gradient(135deg, #f472b6, #db2777)", bg: "rgba(244,114,182,0.08)",
-    ex: [
-      { n: "Lying Leg Raise",          b: [{s:3,r:15,w:"BW"},{s:3,r:15,w:"BW"},{s:3,r:15,w:"BW"},{s:2,r:15,w:"BW"}], rest:60, t:7 },
-      { n: "Dead Bug",                 b: [{s:3,r:12,w:"BW /side"},{s:3,r:12,w:"BW /side"},{s:3,r:12,w:"BW /side"},{s:2,r:12,w:"BW /side"}], rest:60, t:7 },
-      { n: "Plank",                    b: [{s:3,r:1,w:"30-45s hold"},{s:3,r:1,w:"30-45s hold"},{s:3,r:1,w:"30-45s hold"},{s:2,r:1,w:"30-45s hold"}], rest:60, t:7 },
-      { n: "Russian Twist",            b: [{s:3,r:20,w:"BW /side"},{s:3,r:20,w:"BW /side"},{s:3,r:20,w:"BW /side"},{s:2,r:20,w:"BW /side"}], rest:60, t:7 },
-      { n: "Weighted Sit-Up (DB)",     b: [{s:3,r:15,w:"DB – calibrate"},{s:3,r:15,w:"DB – calibrate"},{s:3,r:15,w:"DB – calibrate"},{s:2,r:15,w:"DB – calibrate"}], rest:60, t:7 },
-    ]
-  },
 ];
 
 // Tested 1RMs baked in from PT sessions (kg). Newer in-app entries (progress
