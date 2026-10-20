@@ -24,10 +24,10 @@ export const DAYS: DayDef[] = [
     ex: [
       { n: "Barbell OHP",           b: [{s:4,r:12,w:"32.5kg"},{s:4,r:10,w:"37.5kg"},{s:4,r:6,w:"42.5kg"},{s:2,r:8,w:"30kg"}], rest:120, t:8 },
       { n: "Incline DB Press",      b: [{s:4,r:12,w:"20kg"},{s:4,r:10,w:"22kg"},{s:4,r:6,w:"24kg"},{s:2,r:8,w:"18kg"}], rest:105, t:8 },
-      { n: "Pec Dec",               b: [{s:3,r:12,w:"35kg"},{s:3,r:10,w:"40kg"},{s:3,r:8,w:"45kg"},{s:2,r:10,w:"30kg"}], rest:75, t:8 },
+      { n: "Pec Dec",               b: [{s:3,r:12,w:"35kg"},{s:3,r:12,w:"40kg"},{s:3,r:8,w:"45kg"},{s:2,r:10,w:"30kg"}], rest:75, t:8 },
       { n: "Machine Lateral Raise", b: [{s:3,r:15,w:"20kg"},{s:3,r:15,w:"22.5kg"},{s:3,r:10,w:"25kg"},{s:2,r:12,w:"17.5kg"}], rest:60, t:8 },
       { n: "Face Pull cable",       b: [{s:3,r:15,w:"30kg"},{s:3,r:15,w:"30kg"},{s:3,r:15,w:"30kg"},{s:2,r:15,w:"25kg"}], rest:60, t:7 },
-      { n: "Crunch machine",        b: [{s:3,r:15,w:"25kg"},{s:3,r:12,w:"30kg"},{s:3,r:10,w:"35kg"},{s:2,r:12,w:"25kg"}], rest:60, t:8 },
+      { n: "Crunch machine",        b: [{s:3,r:15,w:"25kg"},{s:3,r:15,w:"30kg"},{s:3,r:10,w:"35kg"},{s:2,r:12,w:"25kg"}], rest:60, t:8 },
     ]
   },
   {
@@ -49,7 +49,7 @@ export const DAYS: DayDef[] = [
     ex: [
       { n: "Chest Supported Row",           b: [{s:3,r:12,w:"27.5kg"},{s:3,r:10,w:"30kg"},{s:4,r:8,w:"35kg"},{s:2,r:10,w:"22.5kg"}], rest:90, t:8 },
       { n: "Machine Incline Chest Press",   b: [{s:3,r:12,w:"40kg"},{s:3,r:10,w:"42.5kg"},{s:3,r:8,w:"45kg"},{s:2,r:10,w:"32.5kg"}], rest:105, t:8 },
-      { n: "Pec Dec",                       b: [{s:3,r:12,w:"35kg"},{s:3,r:10,w:"40kg"},{s:3,r:8,w:"45kg"},{s:2,r:10,w:"30kg"}], rest:75, t:8 },
+      { n: "Pec Dec",                       b: [{s:3,r:12,w:"35kg"},{s:3,r:12,w:"40kg"},{s:3,r:8,w:"45kg"},{s:2,r:10,w:"30kg"}], rest:75, t:8 },
       { n: "Single Arm Pulldown",           b: [{s:3,r:12,w:"22.5kg"},{s:3,r:10,w:"25kg"},{s:3,r:8,w:"27.5kg"},{s:2,r:10,w:"20kg"}], rest:75, t:8 },
       { n: "Machine Lateral Raise",         b: [{s:3,r:15,w:"20kg"},{s:3,r:15,w:"22.5kg"},{s:3,r:10,w:"25kg"},{s:2,r:12,w:"17.5kg"}], rest:60, t:8 },
       { n: "Pallof Press",                  b: [{s:3,r:12,w:"10kg"},{s:3,r:12,w:"10kg"},{s:3,r:10,w:"12.5kg"},{s:2,r:10,w:"7.5kg"}], rest:60, t:8 },
@@ -61,11 +61,11 @@ export const DAYS: DayDef[] = [
     ex: [
       { n: "Close Grip Bench Press",        b: [{s:3,r:12,w:"50kg"},{s:3,r:10,w:"52.5kg"},{s:4,r:6,w:"60kg"},{s:2,r:8,w:"42.5kg"}], rest:180, t:8 },
       { n: "Tricep Pushdown machine",       b: [{s:3,r:12,w:"40kg"},{s:3,r:10,w:"42.5kg"},{s:3,r:8,w:"45kg"},{s:2,r:10,w:"35kg"}], rest:90, t:8 },
-      { n: "Overhead Rope Extension (cable)", b: [{s:3,r:12,w:"27.5kg"},{s:3,r:10,w:"30kg"},{s:3,r:8,w:"32.5kg"},{s:2,r:10,w:"25kg"}], rest:90, t:8 },
+      { n: "Overhead Rope Extension (cable)", b: [{s:3,r:12,w:"27.5kg"},{s:3,r:12,w:"30kg"},{s:3,r:8,w:"32.5kg"},{s:2,r:10,w:"25kg"}], rest:90, t:8 },
       { n: "Bayesian Cable Curl",           b: [{s:3,r:12,w:"7.5kg"},{s:3,r:10,w:"7.5kg"},{s:3,r:8,w:"10kg"},{s:2,r:10,w:"5kg"}], rest:90, t:8 },
-      { n: "Preacher Curl",                 b: [{s:3,r:12,w:"15kg"},{s:3,r:10,w:"17.5kg"},{s:3,r:8,w:"20kg"},{s:2,r:10,w:"12.5kg"}], rest:90, t:8 },
-      { n: "Hammer Curl",                   b: [{s:3,r:12,w:"12kg"},{s:3,r:10,w:"12kg"},{s:3,r:8,w:"14kg"},{s:2,r:10,w:"10kg"}], rest:90, t:8 },
-      { n: "Crunch machine",                b: [{s:3,r:15,w:"25kg"},{s:3,r:12,w:"30kg"},{s:3,r:10,w:"35kg"},{s:2,r:12,w:"25kg"}], rest:60, t:8 },
+      { n: "Preacher Curl",                 b: [{s:3,r:12,w:"15kg"},{s:3,r:12,w:"17.5kg"},{s:3,r:8,w:"20kg"},{s:2,r:10,w:"12.5kg"}], rest:90, t:8 },
+      { n: "Hammer Curl",                   b: [{s:3,r:12,w:"12kg"},{s:3,r:12,w:"12kg"},{s:3,r:8,w:"14kg"},{s:2,r:10,w:"10kg"}], rest:90, t:8 },
+      { n: "Crunch machine",                b: [{s:3,r:15,w:"25kg"},{s:3,r:15,w:"30kg"},{s:3,r:10,w:"35kg"},{s:2,r:12,w:"25kg"}], rest:60, t:8 },
     ]
   },
   {
@@ -74,9 +74,9 @@ export const DAYS: DayDef[] = [
     ex: [
       { n: "Barbell Back Squat",            b: [{s:3,r:12,w:"45kg"},{s:3,r:10,w:"50kg"},{s:4,r:6,w:"62.5kg"},{s:2,r:6,w:"40kg"}], rest:150, t:7 },
       { n: "Romanian Deadlift",             b: [{s:3,r:12,w:"45kg"},{s:3,r:10,w:"50kg"},{s:3,r:6,w:"62.5kg"},{s:2,r:8,w:"40kg"}], rest:120, t:7 },
-      { n: "Hack Squat",                    b: [{s:3,r:12,w:"Calibrate light"},{s:3,r:10,w:"Calibrate light"},{s:3,r:8,w:"Heavy"},{s:2,r:10,w:"Light"}], rest:90, t:7 },
-      { n: "Leg Extension",                 b: [{s:3,r:15,w:"Calibrate"},{s:3,r:12,w:"Calibrate"},{s:3,r:10,w:"Heavy"},{s:2,r:12,w:"Light"}], rest:75, t:8 },
-      { n: "Calf Raise Machine",            b: [{s:3,r:15,w:"Light"},{s:3,r:15,w:"Light"},{s:3,r:10,w:"Heavy"},{s:2,r:12,w:"Light"}], rest:75, t:8 },
+      { n: "Hack Squat",                    b: [{s:3,r:12,w:"Calibrate light"},{s:3,r:12,w:"Calibrate light"},{s:3,r:8,w:"Heavy"},{s:2,r:10,w:"Light"}], rest:90, t:7 },
+      { n: "Leg Extension",                 b: [{s:3,r:15,w:"Calibrate"},{s:3,r:15,w:"Calibrate"},{s:3,r:10,w:"Heavy"},{s:2,r:12,w:"Light"}], rest:75, t:8 },
+      { n: "Calf Raise Machine",            b: [{s:3,r:15,w:"Light"},{s:3,r:15,w:"Light – stop if toe twinges"},{s:3,r:10,w:"Heavy"},{s:2,r:12,w:"Light"}], rest:75, t:8 },
     ]
   },
 ];
