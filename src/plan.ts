@@ -66,6 +66,7 @@ export const DAYS: DayDef[] = [
       { n: "Preacher Curl",                 b: [{s:3,r:12,w:"15kg"},{s:3,r:12,w:"15kg"},{s:3,r:10,w:"15kg"},{s:2,r:10,w:"12.5kg"}], rest:90, t:8 },
       { n: "Hammer Curl",                   b: [{s:3,r:12,w:"12kg"},{s:3,r:12,w:"12kg"},{s:3,r:15,w:"10kg"},{s:2,r:10,w:"10kg"}], rest:90, t:8 },
       { n: "Crunch machine",                b: [{s:3,r:15,w:"25kg"},{s:3,r:15,w:"35kg"},{s:3,r:15,w:"30kg"},{s:2,r:12,w:"25kg"}], rest:60, t:8 },
+      { n: "Calf Raise Machine",            b: [{s:3,r:15,w:"Calibrate light"},{s:3,r:15,w:"Calibrate light"},{s:3,r:15,w:"Light – stop if toe twinges"},{s:2,r:12,w:"Light"}], rest:60, t:8 },
     ]
   },
   {
