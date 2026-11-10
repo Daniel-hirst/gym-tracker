@@ -34,7 +34,7 @@ export const DAYS: DayDef[] = [
     name: "Pull", sub: "BACK · BICEPS · REAR DELTS", emoji: "🏋️",
     color: "#4ecdc4", glow: "rgba(78,205,196,0.25)", grad: "linear-gradient(135deg, #4ecdc4, #44a8c8)", bg: "rgba(78,205,196,0.08)",
     ex: [
-      { n: "Conventional Deadlift",           b: [{s:3,r:12,w:"60kg"},{s:3,r:10,w:"70kg"},{s:3,r:6,w:"90kg"},{s:2,r:6,w:"70kg"}], rest:180, t:7 },
+      { n: "Conventional Deadlift",           b: [{s:3,r:12,w:"60kg"},{s:3,r:10,w:"70kg"},{s:3,r:6,w:"90 kg"},{s:2,r:6,w:"70kg"}], rest:180, t:7 },
       { n: "T-Bar Row",                     b: [{s:3,r:12,w:"25kg"},{s:3,r:10,w:"30kg"},{s:3,r:8,w:"35kg"},{s:2,r:8,w:"25kg"}], rest:120, t:8 },
       { n: "Lat Pulldown (close grip)",     b: [{s:3,r:12,w:"50kg"},{s:3,r:10,w:"50kg"},{s:3,r:8,w:"60kg"},{s:2,r:8,w:"42.5kg"}], rest:90, t:8 },
       { n: "Exigo Pullover",                b: [{s:3,r:12,w:"25kg"},{s:3,r:12,w:"35kg"},{s:3,r:12,w:"40kg"},{s:2,r:10,w:"20kg"}], rest:90, t:8 },
